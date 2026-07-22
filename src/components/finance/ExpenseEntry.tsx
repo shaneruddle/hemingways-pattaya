@@ -183,7 +183,7 @@ const ExpenseEntry: React.FC = () => {
 
         const uploadResult = await uploadResponse.json();
         // Save the proxy url or gsUrl
-        receiptUrls.push(uploadResult.gsUrl || `gs://hemingways-pattaya-website.firebasestorage.app/${storagePath}`);
+        receiptUrls.push(uploadResult.gsUrl || `gs://hemingways-pattaya-9a576.firebasestorage.app/${storagePath}`);
       }
 
       await addDoc(collection(db, 'finance_entries'), {

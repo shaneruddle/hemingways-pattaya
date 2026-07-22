@@ -1,10 +1,10 @@
 {
-  "projectId": "hemingways-pattaya-website",
-  "appId": "TODO_REPLACE_WITH_REAL_APP_ID",
-  "apiKey": "TODO_REPLACE_WITH_REAL_API_KEY",
-  "authDomain": "hemingways-pattaya-website.firebaseapp.com",
+  "projectId": "hemingways-pattaya-9a576",
+  "appId": "1:103170773326:web:046d1ab319ac957d4e0e1f",
+  "apiKey": "AIzaSyDF8-fQFNRiT5A2oTGnwo38DG5mP3036_Q",
+  "authDomain": "hemingways-pattaya-9a576.firebaseapp.com",
   "firestoreDatabaseId": "(default)",
-  "storageBucket": "hemingways-pattaya-website.firebasestorage.app",
-  "messagingSenderId": "TODO_REPLACE_WITH_REAL_SENDER_ID",
-  "measurementId": "TODO_REPLACE_WITH_REAL_MEASUREMENT_ID"
+  "storageBucket": "hemingways-pattaya-9a576.firebasestorage.app",
+  "messagingSenderId": "103170773326",
+  "measurementId": "G-29CVBN6DHW"
 }

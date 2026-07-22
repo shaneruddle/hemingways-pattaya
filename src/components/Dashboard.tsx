@@ -752,7 +752,7 @@ export default function Dashboard({ isSuperAdmin = false }: { isSuperAdmin?: boo
     setIsFixingBuckets(true);
     let fixedCount = 0;
     try {
-      const currentBucket = firebaseConfig.storageBucket || 'hemingways-pattaya-website.firebasestorage.app';
+      const currentBucket = firebaseConfig.storageBucket || 'hemingways-pattaya-9a576.firebasestorage.app';
       const batch = writeBatch(db);
       items.forEach(item => {
         let needsUpdate = false;
@@ -1047,7 +1047,7 @@ export default function Dashboard({ isSuperAdmin = false }: { isSuperAdmin?: boo
 
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, fileToUpload);
-      const gsUrl = `gs://${firebaseConfig.storageBucket || 'hemingways-pattaya-website.firebasestorage.app'}/${storagePath}`;
+      const gsUrl = `gs://${firebaseConfig.storageBucket || 'hemingways-pattaya-9a576.firebasestorage.app'}/${storagePath}`;
       imageService.clearCache(gsUrl);
 
       setInitialPaths(prev => {

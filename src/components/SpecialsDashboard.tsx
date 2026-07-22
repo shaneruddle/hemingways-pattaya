@@ -182,7 +182,7 @@ function ImageUploader({
 
       const storageRef = ref(storage, path);
       await uploadBytes(storageRef, fileToUpload);
-      const bucket = (firebaseConfig as any).storageBucket || 'hemingways-pattaya-website.firebasestorage.app';
+      const bucket = (firebaseConfig as any).storageBucket || 'hemingways-pattaya-9a576.firebasestorage.app';
       const gsUrl = `gs://${bucket}/${path}`;
       onChange(gsUrl);
       toast.success('Image uploaded');

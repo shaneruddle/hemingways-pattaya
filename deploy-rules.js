@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * deploy-rules.js
- * Deploys firestore.rules to hemingways-pattaya-website using
+ * Deploys firestore.rules to hemingways-pattaya-9a576 using
  * firebase-admin ADC (Application Default Credentials).
  * Run from Cloud Shell: node deploy-rules.js
  */
@@ -11,7 +11,7 @@ const https = require('https');
 const fs   = require('fs');
 const path = require('path');
 
-const PROJECT_ID = 'hemingways-pattaya-website';
+const PROJECT_ID = 'hemingways-pattaya-9a576';
 
 admin.initializeApp({
   credential: admin.credential.applicationDefault(),

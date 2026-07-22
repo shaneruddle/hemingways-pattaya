@@ -15,7 +15,7 @@ const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 if (!getApps().length) {
-  initializeApp({ projectId: 'hemingways-pattaya-website' });
+  initializeApp({ projectId: 'hemingways-pattaya-9a576' });
 }
 
 const db = getFirestore();

@@ -6,8 +6,10 @@ This repo was set up by copying the [Hemingways Jomtien](https://github.com/shan
 
 ## Setup checklist (do these before deploying)
 
-- [ ] **Firebase project** — create a new Firebase/GCP project (e.g. `hemingways-pattaya-website`), enable Firestore, Storage, and Authentication (Email/Password) in it.
-- [ ] **`firebase-applet-config.json`** — replace the `TODO_REPLACE_WITH_REAL_*` placeholder values with the real SDK config from Firebase Console → Project Settings → General → Your apps → SDK setup and configuration.
+- [x] **Firebase project** — `hemingways-pattaya-9a576` created, with Firestore (Standard edition, asia-southeast1), Storage (asia-southeast1), and Authentication (Email/Password) enabled, billing linked to the `hemingwayspattaya.com` org's billing account.
+- [x] **`firebase-applet-config.json`** — wired up with the real SDK config from Firebase Console.
+- [x] **Firestore/Storage security rules** — deployed live to the Firebase project (rebranded, admin check uses `info@hemingwayspattaya.com`).
+- [x] **Deploy auth (Workload Identity Federation)** — pool, OIDC provider, and IAM binding created in `hemingways-pattaya-9a576`; `deploy.yml` updated to use them (see CI/CD Setup below). Still needs pushing to GitHub — pending a PAT with `workflow` scope.
 - [ ] **`src/utils/companyDefaults.ts`** — fill in the real address and phone number (marked `TODO` in the file). Everything else here (name, email, social links) was auto-renamed from Jomtien's and should be double-checked.
 - [ ] **Google Place ID** — once you have a Google Business Profile for this location, set `googlePlaceId` in `companyDefaults.ts` (or the Company Profile dashboard) so reviews/maps work.
 - [ ] **Domain** — this repo assumes `hemingwayspattaya.com` throughout (emails, canonical URLs, social handles). Confirm you own/will register this domain, or tell me the real one and I'll do another pass.
@@ -36,16 +38,19 @@ Prerequisites: Node.js 20+
 
 ## CI/CD Setup (one-time)
 
-Add these secrets in **Settings → Secrets and variables → Actions**:
+Authentication to Google Cloud uses **Workload Identity Federation (WIF)** — no downloadable service account key involved (the org's `iam.managed.disableServiceAccountKeyCreation` policy blocks key creation anyway, and WIF is the more secure, keyless approach Google recommends instead). This is already wired up:
+
+- Workload Identity Pool `github-actions-pool` and OIDC provider `github-actions-provider` exist in project `hemingways-pattaya-9a576`, scoped via an attribute condition to only accept tokens from `shaneruddle/hemingways-pattaya`.
+- The `github-actions-deploy` service account grants `roles/iam.workloadIdentityUser` to the principal for `repo:shaneruddle/hemingways-pattaya:ref:refs/heads/main` (i.e. only workflow runs triggered by a push to `main` can impersonate it — if you add other deploy triggers, e.g. tags or other branches, you'll need to grant those subjects access too).
+- `.github/workflows/deploy.yml` authenticates via `google-github-actions/auth@v2` using `workload_identity_provider` + `service_account`, with `permissions: id-token: write` set at the workflow level.
+
+Add these secrets in **Settings → Secrets and variables → Actions** (no `GCP_SA_KEY` needed):
 
 | Secret | Value |
 |--------|-------|
-| `GCP_SA_KEY` | JSON key for a GCP service account (Cloud Run Developer + Storage Object Admin + Service Account User roles) |
 | `GEMINI_API_KEY` | Your Gemini API key |
 | `ANTHROPIC_API_KEY` | Your Anthropic API key (used by the Blog/Finance AI features) |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | SMTP credentials for outgoing email (reservations, contact form) |
-
-To create the GCP service account: Console → IAM & Admin → Service Accounts → Create → add roles above → Keys → Add Key → JSON → paste in GitHub secret.
 
 ## Project Structure
 

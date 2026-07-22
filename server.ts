@@ -99,7 +99,7 @@ async function startServer() {
         .webp({ quality: 85 })
         .toBuffer();
 
-      const bucketName = "hemingways-pattaya-website.firebasestorage.app";
+      const bucketName = "hemingways-pattaya-9a576.firebasestorage.app";
       if (admin.apps.length === 0) {
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
@@ -161,7 +161,7 @@ async function startServer() {
         }
       }
 
-      const bucketName = "hemingways-pattaya-website.firebasestorage.app";
+      const bucketName = "hemingways-pattaya-9a576.firebasestorage.app";
       if (admin.apps.length === 0) {
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
@@ -201,7 +201,7 @@ async function startServer() {
       const pathParam = req.query.path as string;
       if (!pathParam) return res.status(400).send('No path provided');
       const cleanPath = pathParam.replace(/^\/+/, '');
-      const bucketName = "hemingways-pattaya-website.firebasestorage.app";
+      const bucketName = "hemingways-pattaya-9a576.firebasestorage.app";
       
       // Get download URL via GCS REST API
       const encodedPath = encodeURIComponent(cleanPath);
@@ -275,7 +275,7 @@ async function startServer() {
   app.get("/api/list-images", async (req, res) => {
     try {
       const folder = (req.query.folder as string) || 'assets';
-      const bucketName = "hemingways-pattaya-website.firebasestorage.app";
+      const bucketName = "hemingways-pattaya-9a576.firebasestorage.app";
       let images: any[] = [];
       const prefix = folder.endsWith('/') ? folder : `${folder}/`;
 
@@ -366,7 +366,7 @@ async function startServer() {
         if (admin.apps.length === 0) {
           admin.initializeApp({
             credential: admin.credential.applicationDefault(),
-            storageBucket: "hemingways-pattaya-website.firebasestorage.app"
+            storageBucket: "hemingways-pattaya-9a576.firebasestorage.app"
           });
         }
         const bucket = admin.storage().bucket();
@@ -410,7 +410,7 @@ async function startServer() {
         if (admin.apps.length === 0) {
           admin.initializeApp({
             credential: admin.credential.applicationDefault(),
-            storageBucket: "hemingways-pattaya-website.firebasestorage.app"
+            storageBucket: "hemingways-pattaya-9a576.firebasestorage.app"
           });
         }
         const bucket = admin.storage().bucket();
@@ -447,7 +447,7 @@ async function startServer() {
       res.json({
         success: true,
         fbRenamed: fbSuccess,
-        gsUrl: `gs://hemingways-pattaya-website.firebasestorage.app/${newPath}`,
+        gsUrl: `gs://hemingways-pattaya-9a576.firebasestorage.app/${newPath}`,
         url: `/api/image-proxy?path=${encodeURIComponent(newPath)}`,
         size: parseInt(newMetadata.size || '0'),
         contentType: newMetadata.contentType || 'image/webp',
@@ -657,7 +657,7 @@ app.post("/api/contact", async (req, res) => {
     if (admin.apps.length === 0) {
       admin.initializeApp({
         credential: admin.credential.applicationDefault(),
-        storageBucket: "hemingways-pattaya-website.firebasestorage.app",
+        storageBucket: "hemingways-pattaya-9a576.firebasestorage.app",
       });
     }
     return admin.firestore();
