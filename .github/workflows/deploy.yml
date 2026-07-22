@@ -35,7 +35,13 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+        run: |
+          # Pipe gcloud's already-impersonated access token straight into `docker login`
+          # instead of relying on the `docker-credential-gcloud` helper's own token
+          # refresh, which doesn't correctly reuse WIF-impersonated credentials and
+          # fails with a 403 on `iam.serviceAccounts.getAccessToken` when docker push
+          # tries to refresh mid-push.
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://asia-southeast1-docker.pkg.dev
 
       - name: Build Docker image
         run: |
