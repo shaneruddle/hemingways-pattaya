@@ -8,17 +8,17 @@ import type { CompanyProfile } from '../types';
  * App.tsx, Reservation.tsx and googlePlaces.ts; keeping one shared constant
  * here is what prevents those copies from drifting out of sync.
  *
- * TODO(Hemingways Pattaya launch): address, phone and googlePlaceId below
- * are placeholders copied over during the Jomtien -> Pattaya setup and are
- * NOT real. Replace them with Hemingways Pattaya's actual details here (or
- * just set them once in the Company Profile dashboard once the site is
- * live, which overrides these fallbacks).
+ * Address/phone below were pulled from the real, currently-live Google
+ * Business Profile for "Hemingways (Pattaya) Sportsbar Restaurant"
+ * (4.4★, 612 reviews) on 2026-07-22. googlePlaceId is still blank — grab
+ * the ChIJ-format ID from https://developers.google.com/maps/documentation/places/web-service/place-id
+ * (search "Hemingways Pattaya") or the Company Profile dashboard once live.
  */
 export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
   name: "Hemingways Pattaya",
-  address: "TODO: ADD HEMINGWAYS PATTAYA STREET ADDRESS",
+  address: "503 Pattaya Sai Song Rd, Nong Prue, Bang Lamung District, Chon Buri 20150",
   description: "Pattaya's biggest expat sports bar and restaurant. Quality food, cold beer, and all your favourite sports on 15 screens.",
-  phone: "TODO: ADD HEMINGWAYS PATTAYA PHONE NUMBER",
+  phone: "+66 97 215 9509",
   whatsapp: "",
   lineId: "",
   email: "info@hemingwayspattaya.com",
