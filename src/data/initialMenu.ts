@@ -1,8 +1,9 @@
 import { MenuItem } from '../types';
 
 // Real Hemingways Pattaya menu, scraped from the live site (hemingwayspattaya.com/menu)
-// on 2026-07-22. Food categories only — wine list, drinks menu, and teas are a separate
-// follow-up. Prices are in Thai Baht as shown on the live site.
+// on 2026-07-22. Covers all food categories, the wine list, Twining's Tea, and the full
+// separate Drinks Menu (beers/ciders, spirits, coffee & tea, soft drinks & shakes,
+// cocktails & alcopops). Prices are in Thai Baht as shown on the live site.
 export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
   {
     name: 'Fresh Fruit Salad With Yoghurt & Honey',
@@ -1355,5 +1356,1245 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     price: '439',
     published: true,
     order: 4
+  },
+  {
+    name: 'CRANSWICK Lakefield Chardonnay',
+    description: 'Appearance: white with a ripe lemon hue colour. nose: it displays white peach and tropical fruit notes together with fresh green apple and lemon rind aromas. palate: ripe peach and melon flavours with some soft oak notes which produces a richly textured creaminess and a fresh, acid finish. pairing: delicious served with creamy pasta dishes or cold salmon. south eastern australia, australia. alcohol 12%',
+    category: 'Wine',
+    price: '849',
+    published: true,
+    order: 1
+  },
+  {
+    name: 'CRANSWICK Lakefield Moscato (Sweet)',
+    description: 'Appearance: pale yellow with green hues. nose: the nose has floral hints combined with zesty lime and citrus notes. palate: vibrant clean and fresh on the palate, well balanced with hints of sherbet and a crisp finish. pairing: an ideal accompaniment to chicken, thai dishes or dessert. south eastern australia, australia. alcohol 5%',
+    category: 'Wine',
+    price: '749',
+    published: true,
+    order: 2
+  },
+  {
+    name: 'CASAS DEL BOSQUE La Cantera Sauvignon Blanc',
+    description: 'Appearance: pale straw color with green reflections. nose: aromatic layers of grapefruit, boxwood and passion fruit. palate: on the palate the wine is dry and lively, with citrus and herbaceous notes and a very refreshing acidity. pairing: ideally between 6 and 8C, with shellfish such as oysters or grilled fish, herbs, green olives, chutney and goat cheeses. casablanca valley, central valley, chile. alcohol 13.5%',
+    category: 'Wine',
+    price: '1099',
+    published: true,
+    order: 3
+  },
+  {
+    name: 'COLLE CORVIANO Pinot Grigio Colline Pescaresi IGP',
+    description: 'Appearance: pale straw with light green hues. nose: bouquet of white fruits, ripe golden apples and pears. palate: refreshing ripe apple and peach notes end with a gentle acidity, a round, lightly floral wine. pairing: superb with light salads and marinated white meats. abruzzo, italy. alcohol 12%',
+    category: 'Wine',
+    price: '949',
+    published: true,
+    order: 4
+  },
+  {
+    name: 'CLEARWATER COVE Sauvignon Blanc',
+    description: 'Appearance: bright straw colour with slight green hues. nose: lifted and fresh with notes of passion fruit and grapefruit. palate: sweet fruit characters and fresh acidity combine to create a wine brimming with varietal character. pairing: enjoy slightly chilled with fresh fish, oyster, salt and pepper squid, chicken pasta or soft cheeses. marlborough, south island, new zealand. alcohol 12.5%',
+    category: 'Wine',
+    price: '999',
+    published: true,
+    order: 5
+  },
+  {
+    name: 'LISTEL Grain De Gris Rose Terres Du Midi IGP',
+    description: 'Appearance: shiny salmon pink. nose: a seductive scent of red berries and a floral nose with pleasant and inviting aromas. palate: fresh, fruity and juicy with a persistent flavourful texture. pairing: serve well chilled as aperitif or with white meat, poultry, sea fish or soft cheese. saintes-maries-de-la-mer, provence, france. alcohol 11.5%',
+    category: 'Wine',
+    price: '949',
+    published: true,
+    order: 6
+  },
+  {
+    name: 'LOUIS PERDRIER Brut Rose NV',
+    description: 'Appearance: nice rose colour and a persistent mousse followed by numerous and fine bubbles. nose: forward red fruits scents combined with citrus aromas. palate: well-balanced, with pronounced ripe raspberry candy flavors, a soft and lightly sweet gentle sparkling wine. pairing: ideal for parties and receptions. burgundy, france. alcohol 11%',
+    category: 'Wine',
+    price: '849',
+    published: true,
+    order: 7
+  },
+  {
+    name: 'VAL D\'OCA Prosecco Blu Millesimato Extra Dry',
+    description: 'Appearance: lively perlage, limpid and transparent. nose: pleasant floral and fruity notes of wisteria and rose, golden apple, pear, melon and hazelnut. palate: intense, fresh and soft, with a nice flavor and effervescence. pairing: excellent served chilled as a toast at the beginning of a meal. prosecco, veneto, italy. alcohol 11%',
+    category: 'Wine',
+    price: '999',
+    published: true,
+    order: 8
+  },
+  {
+    name: 'CRANSWICK Lakefield Shiraz',
+    description: 'Appearance: deep plum colour with purple hues. nose: intense black cherries supported by hints of vanilla, chocolate and earthy aromas. palate: sweet cherry fruit flavours with silky cocoa, chocolate tannins. pairing: an ideal accompaniment to red meat dishes. south eastern australia, australia. alcohol 13%',
+    category: 'Wine',
+    price: '849',
+    published: true,
+    order: 9
+  },
+  {
+    name: 'CASAS DEL BOSQUE Gran Reserva Cabernet Sauvignon',
+    description: 'Appearance: deep and intense purple. nose: aromas of cassis and mint and notes of dried figs and raspberries, barrel ageing adds notes of vanilla and spices. palate: ripe and well integrated tannins, resulting in a dense and concentrated wine of good length. pairing: excellent with grilled lamb or any roasted red meats and cheeses. maipo valley, central valley, chile. alcohol 14.5%',
+    category: 'Wine',
+    price: '1099',
+    published: true,
+    order: 10
+  },
+  {
+    name: 'CANTINA TOLLO Gufo Merlot',
+    description: 'Appearance: intense ruby red with violet hues. nose: sweeping fruity notes of ripe plums, morello cherries, blackberries and other berry fruits. palate: extremely fresh and very well structured, tannins are reserved but give the wine a good texture. pairing: pasta and roasted meat, pizza and medium aged cheeses. abruzzo, italy. alcohol 13%',
+    category: 'Wine',
+    price: '849',
+    published: true,
+    order: 11
+  },
+  {
+    name: 'CANTINE PIROVANO Collezione Primitivo Puglia IGT',
+    description: 'Appearance: very intense red. nose: aromas of violet and red fruits, with ripe plum, cocoa and leather. palate: great structure and concentration, silky with spicy undertones, pleasant tannins and long finish. pairing: very good with rich dishes, grilled meat, beef stew, and hard cheeses. puglia, italy. alcohol 14%',
+    category: 'Wine',
+    price: '999',
+    published: true,
+    order: 12
+  },
+  {
+    name: 'Twinings Green Jasmine Pot Of Tea',
+    description: 'Green tea with a light scent of jasmine flowers, providing a refreshing aroma that is tempting every time you drink it.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 1
+  },
+  {
+    name: 'Twinings English Breakfast Pot Of Tea',
+    description: 'Start every day with a cup of twinings english breakfast. the heavenly combination of rich assam, ceylon, and kenyan teas is what makes it the perfect morning brew.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 2
+  },
+  {
+    name: 'Twinings Ceylon Pot Of Tea',
+    description: 'Crisp, rounded & refreshing. sri lanka, previously known as ceylon, is often described as the pearl of the indian ocean. the high altitude gives the tea a deliciously refreshing quality.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 3
+  },
+  {
+    name: 'Twinings Darjeeling Pot Of Tea',
+    description: 'Light and delicate with a subtle fragrant edge. known as the champagne of teas, the combination of first and second flush teas in this blend gives a beautiful, unique and delicate flavour.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 4
+  },
+  {
+    name: 'Twinings Peach Pot Of Tea',
+    description: 'A fine tea with a refreshing taste of perfectly ripe peaches, combining fine tea leaves with a light flavor and the gentle sweetness of peaches.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 5
+  },
+  {
+    name: 'Twinings Earl Grey Pot Of Tea',
+    description: 'A tea for people who like things a little different, who travel off the beaten track, who don\'t always play by the rules.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 6
+  },
+  {
+    name: 'Twinings Wild Berry Pot Of Tea',
+    description: 'Black tea deliciously flavoured with four red fruit flavours - blackberry, blackcurrant, strawberry and raspberry.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 7
+  },
+  {
+    name: 'Twinings Camomile Pot Of Tea',
+    description: 'A golden infusion which is slightly sweet and floral, traditionally used to help you relax. made with all-natural ingredients, naturally caffeine free with no added sugar.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 8
+  },
+  {
+    name: 'Twinings Pure Peppermint Pot Of Tea',
+    description: 'Cool and invigorating, expertly created peppermint infusion to help you feel refreshed and ready for the day with each sip.',
+    category: 'Twining\'s Tea',
+    price: '60',
+    published: true,
+    order: 9
+  },
+  {
+    name: 'ASAHI',
+    description: 'Full Pint 140/ Half Pint 75',
+    category: 'Beers & Ciders',
+    price: '140',
+    published: true,
+    order: 1
+  },
+  {
+    name: 'HEINEKEN',
+    description: 'Full Pint 140/ Half Pint 75',
+    category: 'Beers & Ciders',
+    price: '140',
+    published: true,
+    order: 2
+  },
+  {
+    name: 'BUDWEISER',
+    description: 'Budweiser 0.5cl 130b .25cl 65',
+    category: 'Beers & Ciders',
+    price: '130',
+    published: true,
+    order: 3
+  },
+  {
+    name: 'TIGER',
+    description: 'Pint 120/ Half Pint 65',
+    category: 'Beers & Ciders',
+    price: '120',
+    published: true,
+    order: 4
+  },
+  {
+    name: 'GUINNESS',
+    description: 'Pint 260/ Half Pint 140',
+    category: 'Beers & Ciders',
+    price: '260',
+    published: true,
+    order: 5
+  },
+  {
+    name: 'HENRY WESTONS VINTAGE',
+    description: 'Pint 220/ Half Pint 115',
+    category: 'Beers & Ciders',
+    price: '220',
+    published: true,
+    order: 6
+  },
+  {
+    name: 'STELLA ARTOIS',
+    description: 'Pint 219/Half Pint 120',
+    category: 'Beers & Ciders',
+    price: '219',
+    published: true,
+    order: 7
+  },
+  {
+    name: 'BLACK & TAN',
+    description: 'Pint 260/ Half Pint 140',
+    category: 'Beers & Ciders',
+    price: '260',
+    published: true,
+    order: 8
+  },
+  {
+    name: 'BLACK VELVET',
+    description: 'Pint 260/ Half Pint 140',
+    category: 'Beers & Ciders',
+    price: '260',
+    published: true,
+    order: 9
+  },
+  {
+    name: 'SNAKEBITE',
+    description: 'Pint 190/ Half Pint 100',
+    category: 'Beers & Ciders',
+    price: '190',
+    published: true,
+    order: 10
+  },
+  {
+    name: 'HEINEKEN (Bottle/Can)',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '99',
+    published: true,
+    order: 11
+  },
+  {
+    name: 'HEINEKEN ZERO ALC',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '95',
+    published: true,
+    order: 12
+  },
+  {
+    name: 'SAN MIGUEL LIGHT',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '99',
+    published: true,
+    order: 13
+  },
+  {
+    name: 'SAN MIGUEL ZERO SUGAR',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '95',
+    published: true,
+    order: 14
+  },
+  {
+    name: 'TIGER (Bottle/Can)',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '95',
+    published: true,
+    order: 15
+  },
+  {
+    name: 'CHANG',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '90',
+    published: true,
+    order: 16
+  },
+  {
+    name: 'SINGHA',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '90',
+    published: true,
+    order: 17
+  },
+  {
+    name: 'MY BEER',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '90',
+    published: true,
+    order: 18
+  },
+  {
+    name: 'LEO',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '90',
+    published: true,
+    order: 19
+  },
+  {
+    name: 'BUDWEISER (Bottle/Can)',
+    description: '',
+    category: 'Beers & Ciders',
+    price: '99',
+    published: true,
+    order: 20
+  },
+  {
+    name: 'STOWFORD PRESS DARK BERRY',
+    description: 'A refreshing sparkling cider that is bursting with blackcurrant and blackberry richness',
+    category: 'Beers & Ciders',
+    price: '170',
+    published: true,
+    order: 21
+  },
+  {
+    name: 'KOPPARBERG STRAWBERRY & LIME',
+    description: 'Bottled Cider with a taste of fresh Strawberry and a hint of Lime',
+    category: 'Beers & Ciders',
+    price: '280',
+    published: true,
+    order: 22
+  },
+  {
+    name: 'STRONGBOW CIDER',
+    description: 'Dry Cider 440ml Can',
+    category: 'Beers & Ciders',
+    price: '220',
+    published: true,
+    order: 23
+  },
+  {
+    name: 'MAGNERS IRISH CIDER',
+    description: '500ml Can',
+    category: 'Beers & Ciders',
+    price: '220',
+    published: true,
+    order: 24
+  },
+  {
+    name: 'HOUSE RED',
+    description: 'Glass 170 / Corkage 400',
+    category: 'House Wine',
+    price: '170',
+    published: true,
+    order: 1
+  },
+  {
+    name: 'HOUSE WHITE',
+    description: 'Glass 170 / Corkage 400',
+    category: 'House Wine',
+    price: '170',
+    published: true,
+    order: 2
+  },
+  {
+    name: 'House Brandy',
+    description: '',
+    category: 'Spirits',
+    price: '85',
+    published: true,
+    order: 1
+  },
+  {
+    name: 'Hennessey VS',
+    description: '',
+    category: 'Spirits',
+    price: '160',
+    published: true,
+    order: 2
+  },
+  {
+    name: 'House Gin (Two Trees)',
+    description: '160 Double',
+    category: 'Spirits',
+    price: '85',
+    published: true,
+    order: 3
+  },
+  {
+    name: 'Gordons',
+    description: '',
+    category: 'Spirits',
+    price: '120',
+    published: true,
+    order: 4
+  },
+  {
+    name: 'Beefeater',
+    description: '',
+    category: 'Spirits',
+    price: '120',
+    published: true,
+    order: 5
+  },
+  {
+    name: 'Beefeater 24',
+    description: '',
+    category: 'Spirits',
+    price: '120',
+    published: true,
+    order: 6
+  },
+  {
+    name: 'Bombay Sapphire',
+    description: '',
+    category: 'Spirits',
+    price: '130',
+    published: true,
+    order: 7
+  },
+  {
+    name: 'Sangsom',
+    description: '80/150Dbl',
+    category: 'Spirits',
+    price: '80',
+    published: true,
+    order: 8
+  },
+  {
+    name: 'Bacardi',
+    description: '',
+    category: 'Spirits',
+    price: '120',
+    published: true,
+    order: 9
+  },
+  {
+    name: 'Malibu',
+    description: '',
+    category: 'Spirits',
+    price: '120',
+    published: true,
+    order: 10
+  },
+  {
+    name: 'Captain Morgan',
+    description: '',
+    category: 'Spirits',
+    price: '130',
+    published: true,
+    order: 11
+  },
+  {
+    name: 'Bundaberg',
+    description: 'All inc mixer (Exc Red Bull)',
+    category: 'Spirits',
+    price: '150',
+    published: true,
+    order: 12
+  },
+  {
+    name: 'House Vodka (Two Trees)',
+    description: '160 Double',
+    category: 'Spirits',
+    price: '85',
+    published: true,
+    order: 13
+  },
+  {
+    name: 'Absolut',
+    description: '',
+    category: 'Spirits',
+    price: '130',
+    published: true,
+    order: 14
+  },
+  {
+    name: 'Smirnoff',
+    description: '',
+    category: 'Spirits',
+    price: '120',
+    published: true,
+    order: 15
+  },
+  {
+    name: 'Stolichnaya',
+    description: '',
+    category: 'Spirits',
+    price: '120',
+    published: true,
+    order: 16
+  },
+  {
+    name: 'Grey Goose',
+    description: '',
+    category: 'Spirits',
+    price: '150',
+    published: true,
+    order: 17
+  },
+  {
+    name: 'Vodka Redbull',
+    description: '',
+    category: 'Spirits',
+    price: '170',
+    published: true,
+    order: 18
+  },
+  {
+    name: 'House Whiskey',
+    description: '120 Double',
+    category: 'Spirits',
+    price: '70',
+    published: true,
+    order: 19
+  },
+  {
+    name: 'JW Red Label',
+    description: '',
+    category: 'Spirits',
+    price: '130',
+    published: true,
+    order: 20
+  },
+  {
+    name: 'JW Black Label',
+    description: '',
+    category: 'Spirits',
+    price: '160',
+    published: true,
+    order: 21
+  },
+  {
+    name: 'Chivas Regal',
+    description: '',
+    category: 'Spirits',
+    price: '150',
+    published: true,
+    order: 22
+  },
+  {
+    name: 'Famous Grouse',
+    description: '',
+    category: 'Spirits',
+    price: '150',
+    published: true,
+    order: 23
+  },
+  {
+    name: 'Glenfiddich Single Malt',
+    description: '',
+    category: 'Spirits',
+    price: '225',
+    published: true,
+    order: 24
+  },
+  {
+    name: 'Grants',
+    description: '',
+    category: 'Spirits',
+    price: '250',
+    published: true,
+    order: 25
+  },
+  {
+    name: 'Jamesons',
+    description: '',
+    category: 'Spirits',
+    price: '150',
+    published: true,
+    order: 26
+  },
+  {
+    name: 'Canadian Club',
+    description: '',
+    category: 'Spirits',
+    price: '140',
+    published: true,
+    order: 27
+  },
+  {
+    name: 'Jim Beam',
+    description: '',
+    category: 'Spirits',
+    price: '130',
+    published: true,
+    order: 28
+  },
+  {
+    name: 'Jack Daniels',
+    description: '',
+    category: 'Spirits',
+    price: '150',
+    published: true,
+    order: 29
+  },
+  {
+    name: 'Southern Comfort',
+    description: '',
+    category: 'Spirits',
+    price: '130',
+    published: true,
+    order: 30
+  },
+  {
+    name: 'Wild Turkey',
+    description: '',
+    category: 'Spirits',
+    price: '150',
+    published: true,
+    order: 31
+  },
+  {
+    name: 'Sierra Silver Tequila',
+    description: '',
+    category: 'Spirits',
+    price: '120',
+    published: true,
+    order: 32
+  },
+  {
+    name: 'El Toro Tequila',
+    description: '',
+    category: 'Spirits',
+    price: '60',
+    published: true,
+    order: 33
+  },
+  {
+    name: 'Sambuca Shot',
+    description: '',
+    category: 'Spirits',
+    price: '80',
+    published: true,
+    order: 34
+  },
+  {
+    name: 'Black Sambuca',
+    description: '',
+    category: 'Spirits',
+    price: '80',
+    published: true,
+    order: 35
+  },
+  {
+    name: 'English Breakfast Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '65',
+    published: true,
+    order: 1
+  },
+  {
+    name: 'Ceylon Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '65',
+    published: true,
+    order: 2
+  },
+  {
+    name: 'Darjeeling Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '65',
+    published: true,
+    order: 3
+  },
+  {
+    name: 'Earl Grey Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '65',
+    published: true,
+    order: 4
+  },
+  {
+    name: 'Peach Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '65',
+    published: true,
+    order: 5
+  },
+  {
+    name: 'Wild Berry Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '65',
+    published: true,
+    order: 6
+  },
+  {
+    name: 'Peppermint Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '65',
+    published: true,
+    order: 7
+  },
+  {
+    name: 'Chamomile Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '65',
+    published: true,
+    order: 8
+  },
+  {
+    name: 'Cup of Hot Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '50',
+    published: true,
+    order: 9
+  },
+  {
+    name: 'Van Houten Hot Chocolate',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '75',
+    published: true,
+    order: 10
+  },
+  {
+    name: 'Glass of Milk',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '70',
+    published: true,
+    order: 11
+  },
+  {
+    name: 'Extra Honey',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '15',
+    published: true,
+    order: 12
+  },
+  {
+    name: 'Regular Coffee',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 13
+  },
+  {
+    name: 'Espresso',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '60',
+    published: true,
+    order: 14
+  },
+  {
+    name: 'Americano',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 15
+  },
+  {
+    name: 'Cappuccino',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 16
+  },
+  {
+    name: 'Mocha',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 17
+  },
+  {
+    name: 'Cafe Latte',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 18
+  },
+  {
+    name: 'Latte Macchiato',
+    description: 'Tall Espresso & Steamed Milk',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 19
+  },
+  {
+    name: 'Macchiato',
+    description: 'Espresso with Dash of Steamed Milk',
+    category: 'Coffee & Tea',
+    price: '70',
+    published: true,
+    order: 20
+  },
+  {
+    name: 'Coffee Crema',
+    description: 'Coffee with Foam',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 21
+  },
+  {
+    name: 'Flat White',
+    description: 'Micro-Foamed Milk Poured over Espresso',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 22
+  },
+  {
+    name: 'Lungo',
+    description: 'Espresso Made with more Water',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 23
+  },
+  {
+    name: 'Ristretto',
+    description: 'Espresso made with less Water - Extra Kick!',
+    category: 'Coffee & Tea',
+    price: '80',
+    published: true,
+    order: 24
+  },
+  {
+    name: 'Iced Coffee',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '95',
+    published: true,
+    order: 25
+  },
+  {
+    name: 'Iced Latte',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '95',
+    published: true,
+    order: 26
+  },
+  {
+    name: 'Iced Cappuccino',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '95',
+    published: true,
+    order: 27
+  },
+  {
+    name: 'Iced Tea',
+    description: '',
+    category: 'Coffee & Tea',
+    price: '85',
+    published: true,
+    order: 28
+  },
+  {
+    name: 'Soda / Tonic Water',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '50',
+    published: true,
+    order: 1
+  },
+  {
+    name: 'Bottled Water',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '50',
+    published: true,
+    order: 2
+  },
+  {
+    name: 'Banana Shake',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '120',
+    published: true,
+    order: 3
+  },
+  {
+    name: 'Lemon Shake',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '120',
+    published: true,
+    order: 4
+  },
+  {
+    name: 'Watermelon Shake',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '120',
+    published: true,
+    order: 5
+  },
+  {
+    name: 'Pineapple Shake',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '120',
+    published: true,
+    order: 6
+  },
+  {
+    name: 'Mixed Shake',
+    description: 'Mix of 2-3 Shakes',
+    category: 'Soft Drinks & Shakes',
+    price: '140',
+    published: true,
+    order: 7
+  },
+  {
+    name: 'Sprite',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '60',
+    published: true,
+    order: 8
+  },
+  {
+    name: 'Fanta',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '60',
+    published: true,
+    order: 9
+  },
+  {
+    name: 'Coke',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '60',
+    published: true,
+    order: 10
+  },
+  {
+    name: 'Diet Coke/Coke Zero',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '60',
+    published: true,
+    order: 11
+  },
+  {
+    name: 'Schweppes Lime',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '60',
+    published: true,
+    order: 12
+  },
+  {
+    name: 'Syrup & Soda',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '60',
+    published: true,
+    order: 13
+  },
+  {
+    name: 'Lipo / Red Bull',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '50',
+    published: true,
+    order: 14
+  },
+  {
+    name: 'Lipton Ice Tea',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '50',
+    published: true,
+    order: 15
+  },
+  {
+    name: 'Apple Juice',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '70',
+    published: true,
+    order: 16
+  },
+  {
+    name: 'Orange Juice',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '70',
+    published: true,
+    order: 17
+  },
+  {
+    name: 'Lemon Juice',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '70',
+    published: true,
+    order: 18
+  },
+  {
+    name: 'Pineapple Juice',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '70',
+    published: true,
+    order: 19
+  },
+  {
+    name: 'Tomato Juice',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '70',
+    published: true,
+    order: 20
+  },
+  {
+    name: 'Cranberry Juice',
+    description: '',
+    category: 'Soft Drinks & Shakes',
+    price: '85',
+    published: true,
+    order: 21
+  },
+  {
+    name: 'Sex on the Beach',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 1
+  },
+  {
+    name: 'Long Island',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '195',
+    published: true,
+    order: 2
+  },
+  {
+    name: 'White Russian',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '195',
+    published: true,
+    order: 3
+  },
+  {
+    name: 'Margarita',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 4
+  },
+  {
+    name: 'Pina Colada',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 5
+  },
+  {
+    name: 'Bloody Mary',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '135',
+    published: true,
+    order: 6
+  },
+  {
+    name: 'B52',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '135',
+    published: true,
+    order: 7
+  },
+  {
+    name: 'Mojito',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 8
+  },
+  {
+    name: 'Mai Tai',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 9
+  },
+  {
+    name: 'Purple Haze',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 10
+  },
+  {
+    name: 'Black Russian',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '195',
+    published: true,
+    order: 11
+  },
+  {
+    name: 'Blowjob',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '135',
+    published: true,
+    order: 12
+  },
+  {
+    name: 'Blue Margarita',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 13
+  },
+  {
+    name: 'Blue Hawaii',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 14
+  },
+  {
+    name: 'Expresso Martini',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 15
+  },
+  {
+    name: 'Gin Fizz',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 16
+  },
+  {
+    name: 'Jager Bomb',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 17
+  },
+  {
+    name: 'Martini Dry',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '175',
+    published: true,
+    order: 18
+  },
+  {
+    name: 'Slippery Nipple',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 19
+  },
+  {
+    name: 'Dry Martini Cocktail',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 20
+  },
+  {
+    name: 'Tequila Sunrise',
+    description: '',
+    category: 'Cocktails & Alcopops',
+    price: '185',
+    published: true,
+    order: 21
+  },
+  {
+    name: 'SMIRNOFF Ice Original',
+    description: 'Crisp, Taste, Bubbly Finish, A Natural Lemon Line Flavour',
+    category: 'Cocktails & Alcopops',
+    price: '130',
+    published: true,
+    order: 22
+  },
+  {
+    name: 'SPY Classic',
+    description: 'Wine Cooler with a fresh and fruity taste',
+    category: 'Cocktails & Alcopops',
+    price: '90',
+    published: true,
+    order: 23
+  },
+  {
+    name: 'SPY Red',
+    description: 'Wine Cooler with a fresh and fruity taste',
+    category: 'Cocktails & Alcopops',
+    price: '90',
+    published: true,
+    order: 24
   },
 ];
