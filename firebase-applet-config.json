@@ -1,0 +1,10 @@
+{
+  "projectId": "hemingways-pattaya-website",
+  "appId": "TODO_REPLACE_WITH_REAL_APP_ID",
+  "apiKey": "TODO_REPLACE_WITH_REAL_API_KEY",
+  "authDomain": "hemingways-pattaya-website.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "hemingways-pattaya-website.firebasestorage.app",
+  "messagingSenderId": "TODO_REPLACE_WITH_REAL_SENDER_ID",
+  "measurementId": "TODO_REPLACE_WITH_REAL_MEASUREMENT_ID"
+}
