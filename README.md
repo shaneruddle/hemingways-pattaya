@@ -10,18 +10,20 @@ This repo was set up by copying the [Hemingways Jomtien](https://github.com/shan
 - [x] **`firebase-applet-config.json`** — wired up with the real SDK config from Firebase Console.
 - [x] **Firestore/Storage security rules** — deployed live to the Firebase project (rebranded, admin check uses `info@hemingwayspattaya.com`).
 - [x] **Deploy auth (service account key)** — WIF was attempted first but `iam.serviceAccounts.getAccessToken` kept failing with a 403 despite correct IAM bindings, attribute mapping, and an org policy override (`iam.allowedPolicyMemberDomains`) — never conclusively diagnosed. Switched to a plain downloadable JSON key for `github-actions-deploy@hemingways-pattaya-9a576.iam.gserviceaccount.com`, which required overriding the `iam.managed.disableServiceAccountKeyCreation` org policy (not enforced) for this project. Key is stored as the `GCP_SA_KEY` GitHub secret (see CI/CD Setup below).
+- [x] **Pipeline verified working end-to-end** — after also enabling the Artifact Registry API, creating the `hemingways-pattaya` Artifact Registry repo (Docker, Standard, `asia-southeast1`), and enabling the Cloud Run Admin API, the deploy succeeded on 2026-07-22. First deploy came up **private by default** (Cloud Run's standard behavior — `deploy-cloudrun@v2` doesn't request public access unless told to) and returned 403 Forbidden; fixed by setting **Security → Authentication → Allow public access** on the `hemingways-pattaya` Cloud Run service in the console. This is a one-time setting — it persists across future deploys to the same service, so it shouldn't need doing again.
 - [x] **`src/utils/companyDefaults.ts`** address/phone — filled in from the real, live Google Business Profile for "Hemingways (Pattaya) Sportsbar Restaurant" (4.4★, 612 reviews): `503 Pattaya Sai Song Rd, Nong Prue, Bang Lamung District, Chon Buri 20150` / `+66 97 215 9509`.
 - [ ] **Google Place ID** — still blank in `companyDefaults.ts`. Grab the `ChIJ...`-format ID from [Google's Place ID Finder](https://developers.google.com/maps/documentation/places/web-service/place-id) (search "Hemingways Pattaya") or set it via the Company Profile dashboard once live.
 - [x] **Domain** — confirmed: `hemingwayspattaya.com` is a real domain you own (managed in GoDaddy), currently serving a **live Bubble-built site** with real reviews/traffic. Plan: deploy this app to **`new.hemingwayspattaya.com`** as a subdomain, leaving the existing live site untouched at the root domain. Once the app is deployed to Cloud Run, this needs: (1) add a custom domain mapping for `new.hemingwayspattaya.com` to the `hemingways-pattaya` Cloud Run service in the GCP console, (2) add the DNS record Cloud Run gives you to the `hemingwayspattaya.com` zone in GoDaddy. Not done yet — blocked on the first deploy happening (see workflow-scope PAT note above).
 - [x] **Social links** — `facebook.com/hemingwayspattaya` confirmed (linked from the live site's footer). `instagram.com/hemingwayspattaya` is still an unconfirmed guess — the live site's footer only links WhatsApp/Facebook/Google/YouTube, no Instagram icon.
 - [ ] **Menu items** — `src/data/initialMenu.ts` currently still has Jomtien's placeholder menu (generic pub food). Swap in the real Hemingways Pattaya menu — either edit this file directly or add items via the in-app menu dashboard once deployed.
+- [ ] **Logo images** — `public/logo.png`, `public/assets/logo/hemingways-logo-black.png`, and `public/assets/logo/hemingways-logo-white.png` are still the original Jomtien logo graphics (the images themselves read "HEMINGWAYS JOMTIEN"). Confirmed live on the deployed site's header. Needs real Pattaya logo files from Shane to replace these three.
 - [ ] **GitHub Actions secrets** — add these in this repo's Settings → Secrets and variables → Actions (see CI/CD Setup below).
 
 ## Deployment
 
 This project deploys automatically to **Google Cloud Run** via GitHub Actions whenever you push to `main`.
 
-**Live site:** not yet deployed — will appear at a `run.app` URL (or a custom domain once configured) after the first successful deploy.
+**Live site:** https://hemingways-pattaya-5ndqwfcsda-as.a.run.app (first successful deploy 2026-07-22; will move to `new.hemingwayspattaya.com` once the custom domain is mapped — see checklist above).
 
 ## Making Changes
 
