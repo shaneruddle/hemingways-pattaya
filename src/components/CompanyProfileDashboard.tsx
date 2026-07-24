@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { CompanyProfile } from '../types';
 import { DEFAULT_COMPANY_PROFILE } from '../utils/companyDefaults';
 import { toast } from 'sonner';
+import { logActivity } from '../utils/logger';
 import {
   Building2,
   MapPin,
@@ -16,7 +17,10 @@ import {
   ExternalLink,
   Facebook,
   Instagram,
-  Map as MapIcon
+  Map as MapIcon,
+  ImageIcon,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -33,6 +37,8 @@ export default function CompanyProfileDashboard() {
   const [profile, setProfile] = useState<CompanyProfile>(INITIAL_PROFILE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -73,6 +79,62 @@ export default function CompanyProfileDashboard() {
       toast.error("Failed to update company profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogoFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so selecting the same file again still fires onChange
+    if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file (PNG, SVG, WebP, or JPG).');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Logo file is too large (max 8MB).');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const storagePath = `logos/site-logo_${Date.now()}.${ext}`;
+
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Data, storagePath, contentType: file.type }),
+      });
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.error || `Upload failed (HTTP ${response.status})`);
+      }
+      const { url } = await response.json();
+
+      // Persist immediately (not just on the next "Save Changes" click) so a
+      // logo upload can't be lost by navigating away before saving the rest
+      // of the form.
+      const docRef = doc(db, 'companyProfile', 'config');
+      const updatedProfile = { ...profile, logoUrl: url, updatedAt: new Date().toISOString() };
+      await setDoc(docRef, updatedProfile, { merge: true });
+      setProfile(updatedProfile);
+
+      await logActivity('Logo Updated', `Uploaded new site logo: ${file.name}`, 'image');
+      toast.success('Logo updated — live across the site now.');
+    } catch (error: any) {
+      console.error('Error uploading logo:', error);
+      toast.error('Failed to upload logo: ' + (error?.message || 'unknown error'));
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
@@ -166,6 +228,80 @@ export default function CompanyProfileDashboard() {
                 rows={4}
                 className="w-full px-4 py-3 bg-cream border-none rounded-2xl focus:ring-2 focus:ring-gold outline-none resize-none text-ink"
               />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Branding */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-cream rounded-xl flex items-center justify-center text-navy">
+              <ImageIcon size={24} />
+            </div>
+            <h2 className="text-xl font-bold text-ink">Branding</h2>
+          </div>
+
+          <label className="block text-sm font-bold text-gray-700 mb-2">Site Logo</label>
+          <p className="text-xs text-gray-400 mb-4">
+            Used in the site header, footer, dashboard sidebar, and admin login page. Upload a light/white-colored
+            logo (PNG or SVG with a transparent background works best) since it sits on a dark navy background,
+            shown below. Updating it here goes live immediately — no redeploy needed.
+          </p>
+
+          <div className="flex items-center gap-6 flex-wrap">
+            <div
+              className="flex items-center justify-center rounded-2xl px-8 py-6 border border-gray-100"
+              style={{ background: '#0d1b2a', minWidth: 220, minHeight: 100 }}
+            >
+              {uploadingLogo ? (
+                <Loader2 size={28} className="text-white/60 animate-spin" />
+              ) : profile.logoUrl ? (
+                <img
+                  src={profile.logoUrl}
+                  alt="Current site logo"
+                  style={{ height: 48, maxWidth: 220, objectFit: 'contain' }}
+                />
+              ) : (
+                <img
+                  src="/assets/logo/hemingways-logo-white.png"
+                  alt="Current site logo (placeholder)"
+                  style={{ height: 48, maxWidth: 220, objectFit: 'contain' }}
+                />
+              )}
+            </div>
+
+            <div>
+              <input
+                ref={logoFileInputRef}
+                type="file"
+                accept="image/png,image/svg+xml,image/webp,image/jpeg"
+                onChange={handleLogoFileSelected}
+                className="hidden"
+                id="logo-upload-input"
+              />
+              <button
+                type="button"
+                onClick={() => logoFileInputRef.current?.click()}
+                disabled={uploadingLogo}
+                className="flex items-center gap-2 px-5 py-3 bg-navy text-white rounded-xl hover:bg-gold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+              >
+                {uploadingLogo ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Upload size={18} />
+                )}
+                {uploadingLogo ? 'Uploading...' : profile.logoUrl ? 'Replace Logo' : 'Upload Logo'}
+              </button>
+              {!profile.logoUrl && (
+                <p className="text-xs text-gray-400 mt-2 max-w-[220px]">
+                  Currently showing the placeholder logo — upload your own to replace it everywhere.
+                </p>
+              )}
             </div>
           </div>
         </motion.div>

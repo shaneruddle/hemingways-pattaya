@@ -40,6 +40,10 @@ export interface CompanyProfile {
   email: string;
   googlePlaceId: string;
   mapEmbedUrl: string;
+  /** Uploaded via Company Profile → Branding. Light/white logo used on the
+   *  dark navy header, dashboard sidebar, and admin login page. Falls back
+   *  to /assets/logo/hemingways-logo-white.png when unset. */
+  logoUrl?: string;
   openingHours: {
     monday: string;
     tuesday: string;

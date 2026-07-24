@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { 
   LayoutGrid, 
@@ -23,8 +23,9 @@ import {
   Trophy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const T = {
@@ -220,8 +221,16 @@ export default function DashboardLayout({ user }: { user: any }) {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const role: string = user?.role || '';
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'companyProfile', 'config'), (snap) => {
+      setLogoUrl((snap.data()?.logoUrl as string) || null);
+    }, () => setLogoUrl(null));
+    return () => unsub();
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -296,7 +305,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             <>
               <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
                 <img
-                  src="/assets/logo/hemingways-logo-white.png"
+                  src={logoUrl || "/assets/logo/hemingways-logo-white.png"}
                   alt="Hemingways"
                   style={{ height: 36, objectFit: 'contain', display: 'block' }}
                 />

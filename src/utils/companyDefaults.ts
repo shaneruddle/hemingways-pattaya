@@ -24,6 +24,7 @@ export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
   email: "info@hemingwayspattaya.com",
   googlePlaceId: "",
   mapEmbedUrl: "",
+  logoUrl: "",
   openingHours: {
     monday: "9:30 AM – 12:00 AM",
     tuesday: "9:30 AM – 12:00 AM",

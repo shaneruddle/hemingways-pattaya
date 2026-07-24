@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
-import { auth } from '../../firebase';
+import { auth, db } from '../../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { logActivity } from '../../utils/logger';
 import { LogIn, Mail, Lock, Loader2, ArrowLeft, Globe } from 'lucide-react';
 import { toast } from 'sonner';
@@ -28,6 +29,14 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [emailFocus, setEmailFocus] = useState(false);
   const [passFocus, setPassFocus] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'companyProfile', 'config'), (snap) => {
+      setLogoUrl((snap.data()?.logoUrl as string) || null);
+    }, () => setLogoUrl(null));
+    return () => unsub();
+  }, []);
   const navigate = useNavigate();
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -139,7 +148,7 @@ export default function AdminLogin() {
           {/* Logo */}
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <img
-              src="/assets/logo/hemingways-logo-white.png"
+              src={logoUrl || "/assets/logo/hemingways-logo-white.png"}
               alt="Hemingways Pattaya"
               style={{ height: 52, objectFit: 'contain', display: 'inline-block' }}
             />

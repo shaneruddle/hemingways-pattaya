@@ -199,7 +199,7 @@ const Navbar = ({ canAccessDashboard, setUser, companyProfile }: { canAccessDash
       <div style={{ maxWidth: 'var(--container)', margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }} onClick={() => { setIsOpen(false); window.scrollTo(0, 0); }}>
-          <img src="/assets/logo/hemingways-logo-white.png" height={42} alt="Hemingways Pattaya" style={{ height: 42, width: 'auto' }} />
+          <img src={companyProfile?.logoUrl || "/assets/logo/hemingways-logo-white.png"} height={42} alt="Hemingways Pattaya" style={{ height: 42, width: 'auto' }} />
         </Link>
 
         {/* Desktop Nav */}
@@ -1075,7 +1075,7 @@ const Footer = ({ companyProfile }: { companyProfile: CompanyProfile | null }) =
       <div style={{ maxWidth: 'var(--container)', margin: '0 auto', padding: '64px 24px' }} className="grid md:grid-cols-3 gap-12">
         {/* Col 1: Logo + social */}
         <div>
-          <img src="/assets/logo/hemingways-logo-white.png" height={40} alt="Hemingways Pattaya" style={{ height: 40, width: 'auto', marginBottom: 16 }} />
+          <img src={companyProfile?.logoUrl || "/assets/logo/hemingways-logo-white.png"} height={40} alt="Hemingways Pattaya" style={{ height: 40, width: 'auto', marginBottom: 16 }} />
           <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 24, maxWidth: 260 }}>
             {companyProfile?.description || DEFAULT_COMPANY_PROFILE.description}
           </p>
