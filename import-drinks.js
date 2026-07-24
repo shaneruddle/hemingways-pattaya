@@ -18,8 +18,8 @@
  * authenticated as info@hemingwayspattaya.com so no service account needed.
  */
 
-const { initializeApp, getApps } = require('firebase-admin/app');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 if (!getApps().length) {
   initializeApp({ projectId: 'hemingways-pattaya-9a576' });
