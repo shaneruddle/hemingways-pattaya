@@ -26,7 +26,8 @@ import {
   Zap,
   Wheat,
   Droplets,
-  Utensils as UtensilsIcon
+  Utensils as UtensilsIcon,
+  Loader2
 } from "lucide-react";
 import { useState, useEffect, useMemo, FormEvent } from "react";
 import {
@@ -2050,16 +2051,30 @@ const MainSite = ({ isAdmin, businessInfo, companyProfile }: { isAdmin: boolean,
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
+  // Tracks whether Firebase Auth has resolved at least once. Auth.tsx calls
+  // onUserChange (handleUserChange below) asynchronously after checking the
+  // session and loading the Firestore profile — until then `user` is null,
+  // which is indistinguishable from "signed out". Route guards below must
+  // wait for this to flip before deciding to redirect, otherwise a hard
+  // reload of a role-gated route (e.g. /staff) bounces an already-logged-in
+  // user back to "/" before their auth state has had a chance to load.
+  const [authLoading, setAuthLoading] = useState(true);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleUserChange = (u: any) => {
+    setUser(u);
+    setAuthLoading(false);
+  };
 
   return (
     <Router>
       <Toaster position="top-center" richColors />
       <AppContent
         user={user}
-        setUser={setUser}
+        setUser={handleUserChange}
+        authLoading={authLoading}
         businessInfo={businessInfo}
         setBusinessInfo={setBusinessInfo}
         companyProfile={companyProfile}
@@ -2071,7 +2086,7 @@ export default function App() {
   );
 }
 
-function AppContent({ user, setUser, businessInfo, setBusinessInfo, companyProfile, setCompanyProfile, error, setError }: any) {
+function AppContent({ user, setUser, authLoading, businessInfo, setBusinessInfo, companyProfile, setCompanyProfile, error, setError }: any) {
   const location = useLocation();
 
   // Legacy support: old HashRouter URLs (/#/menu, /#/staff, ...) -> real paths.
@@ -2202,7 +2217,11 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, companyProfi
         <Route path="/menu" element={isCashierOnly ? <div style={{ height: '100vh', background: 'var(--ink-850)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>Access Denied</div> : <DigitalMenuDisplay />} />
         <Route path="/digital-menu" element={isCashierOnly ? <div style={{ height: '100vh', background: 'var(--ink-850)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>Access Denied</div> : <DigitalMenuDisplay />} />
         <Route path="/expense" element={<Navigate to="/staff" replace />} />
-        <Route path="/staff" element={isStaff ? <StaffPortal /> : <Navigate to="/" replace />} />
+        <Route path="/staff" element={
+          authLoading
+            ? <div className="fixed inset-0 z-50 bg-cream flex items-center justify-center"><Loader2 size={28} className="animate-spin text-gold" /></div>
+            : (isStaff ? <StaffPortal /> : <Navigate to="/" replace />)
+        } />
 
         {/* Dashboard Routes with Sidebar Layout */}
         <Route path="/dashboard" element={isMarketing ? <DashboardLayout user={user} /> : <div style={{ paddingTop: 128, textAlign: 'center', height: '100vh', background: 'var(--ink-850)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>Access Denied. <Auth onUserChange={setUser} /></div>}>
