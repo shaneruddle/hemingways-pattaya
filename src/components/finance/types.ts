@@ -78,3 +78,37 @@ export interface MonthlySummary {
   income_by_category: Record<string, number>;
   expenses_by_category: Record<string, number>;
 }
+
+// A single figure (Cash / Bank / Shane) on a given trading date. Stored
+// as a map on the DailyBalance doc holding only the CURRENT value; every
+// write also appends an entry to that date's `history` subcollection (see
+// DailyBalanceHistoryEntry) so past corrections stay visible.
+export interface DailyBalanceFigure {
+  value: number;
+  updatedBy: string; // email
+  updatedByName: string; // short display name, e.g. "Nok"
+  updatedAt: string; // ISO string
+}
+
+export interface DailyBalance {
+  id: string; // date, YYYY-MM-DD
+  date: string;
+  cash?: DailyBalanceFigure;
+  bank?: DailyBalanceFigure;
+  shane?: DailyBalanceFigure;
+  // Firestore Timestamp — the moment this date becomes read-only. Set (and
+  // re-set to the same value) on every write from the client; see
+  // DailyBalances.tsx's lockDateFor().
+  lockAt?: unknown;
+}
+
+// One row per edit, in daily_balances/{date}/history — append-only, never
+// updated or deleted, so it doubles as the audit trail for that figure.
+export interface DailyBalanceHistoryEntry {
+  id: string;
+  field: 'cash' | 'bank' | 'shane';
+  value: number;
+  updatedBy: string;
+  updatedByName: string;
+  updatedAt: string;
+}
