@@ -6,7 +6,8 @@ import Ingredients from './Ingredients';
 import RecipeCosting from './RecipeCosting';
 import FinanceReports from './FinanceReports';
 import FinanceSuppliers from './FinanceSuppliers';
-import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, ChefHat, Upload, Truck } from 'lucide-react';
+import DailyBalances from './DailyBalances';
+import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, ChefHat, Upload, Truck, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 type FinanceRole = 'owner' | 'manager' | 'cashier';
@@ -24,6 +25,8 @@ const ALL_TABS = [
   { id: 'overview',     label: 'Overview',        icon: <LayoutDashboard size={16} />, roles: ['owner', 'manager'] },
   { id: 'expense',      label: 'Log Expense',      icon: <Receipt size={16} />,         roles: ['owner', 'manager', 'cashier'] },
   { id: 'income',       label: 'Log Income',       icon: <TrendingUp size={16} />,      roles: ['owner', 'manager', 'cashier'] },
+  // Owner + manager only (not cashier) — daily cash/bank reconciliation.
+  { id: 'daily-balances', label: 'Daily Balances', icon: <Wallet size={16} />,          roles: ['owner', 'manager'] },
   { id: 'suppliers',    label: 'Suppliers',        icon: <Truck size={16} />,           roles: ['owner', 'manager'] },
   { id: 'ingredients',  label: 'Ingredients',      icon: <Scale size={16} />,           roles: ['owner', 'manager'] },
   { id: 'recipes',      label: 'Recipe Costing',   icon: <ChefHat size={16} />,         roles: ['owner', 'manager'] },
@@ -70,6 +73,7 @@ export default function FinanceDashboard({ user }: { user: any }) {
         {activeTab === 'overview'    && <FinanceOverview financeRole={financeRole} />}
         {activeTab === 'expense'     && <LogExpense user={user} financeRole={financeRole} />}
         {activeTab === 'income'      && <LogIncome user={user} financeRole={financeRole} />}
+        {activeTab === 'daily-balances' && <DailyBalances user={user} />}
         {activeTab === 'suppliers'   && <FinanceSuppliers user={user} />}
         {activeTab === 'ingredients' && <Ingredients />}
         {activeTab === 'recipes'     && <RecipeCosting />}

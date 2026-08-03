@@ -18,6 +18,17 @@ service cloud.firestore {
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["staff", "cashier", "marketing", "manager"])
       );
     }
+
+    // Owner/manager tier for the Finance dashboard — matches
+    // canSeeFinance() in DashboardLayout.tsx and getFinanceRole() in
+    // FinanceDashboard.tsx (super_admin -> owner, admin/manager -> manager).
+    // Used to gate daily_balances so cashiers can't read/write it.
+    function isFinanceLead() {
+      return isSignedIn() && (
+        (request.auth.token.email.lower() == "info@hemingwayspattaya.com") ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["super_admin", "admin", "manager"])
+      );
+    }
     
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
@@ -132,6 +143,23 @@ service cloud.firestore {
       allow read: if isStaff();
       allow create: if isStaff();
       allow update, delete: if isAdmin();
+    }
+
+    // Daily Cash/Bank/Shane reconciliation, one doc per trading date. A date
+    // stays editable through the following calendar day then locks via
+    // lockAt (see DailyBalances.tsx) — owner/manager only, not cashier.
+    // The history subcollection is an append-only audit trail of edits.
+    match /daily_balances/{date} {
+      allow read: if isFinanceLead();
+      allow create: if isFinanceLead();
+      allow update: if isFinanceLead() && (!('lockAt' in resource.data) || request.time < resource.data.lockAt);
+      allow delete: if false;
+
+      match /history/{id} {
+        allow read: if isFinanceLead();
+        allow create: if isFinanceLead();
+        allow update, delete: if false;
+      }
     }
 
     match /finance_ingredients/{id} {
