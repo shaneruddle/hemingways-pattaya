@@ -1275,6 +1275,19 @@ const Footer = ({ companyProfile }: { companyProfile: CompanyProfile | null }) =
       <div style={{ borderTop: `1px solid var(--border)`, padding: '16px 24px', textAlign: 'center' }}>
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--text-faint)' }}>
           © {new Date().getFullYear()} Hemingways Pattaya · Restaurant & Bar · Also now on Grab Food
+          {' · '}
+          {/* Discreet entry point to the manager mobile app (see /manager) — not
+              logged in yet -> lands on the login screen -> then straight into
+              the app. Deliberately styled to blend into the copyright line
+              rather than stand out as a nav item. */}
+          <Link
+            to="/manager"
+            style={{ color: 'inherit', textDecoration: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold-400)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'inherit')}
+          >
+            Staff
+          </Link>
         </p>
       </div>
     </footer>
