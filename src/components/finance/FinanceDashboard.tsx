@@ -10,9 +10,11 @@ import DailyBalances from './DailyBalances';
 import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, ChefHat, Upload, Truck, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-type FinanceRole = 'owner' | 'manager' | 'cashier';
+export type FinanceRole = 'owner' | 'manager' | 'cashier';
 
-function getFinanceRole(user: any): FinanceRole {
+// Exported so the /manager mobile app can compute the same role without
+// duplicating this logic.
+export function getFinanceRole(user: any): FinanceRole {
   if (!user) return 'cashier';
   // Only super_admin sees net profit
   if (user.role === 'super_admin') return 'owner';

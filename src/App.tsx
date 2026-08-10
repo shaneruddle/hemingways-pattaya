@@ -63,6 +63,7 @@ import BulkImport from "./components/BulkImport";
 import DigitalMenu from "./components/DigitalMenu";
 import DigitalMenuDisplay from "./components/DigitalMenuDisplay";
 import FinanceDashboard from "./components/finance/FinanceDashboard";
+import ManagerApp from "./components/manager/ManagerApp";
 import BulkFinanceImport from "./components/finance/BulkFinanceImport";
 import ExpenseEntry from "./components/finance/ExpenseEntry";
 import StaffPortal from "./components/StaffPortal";
@@ -2106,6 +2107,7 @@ function AppContent({ user, setUser, authLoading, businessInfo, setBusinessInfo,
   const isDigitalMenu = location.pathname === "/menu" || location.pathname === "/digital-menu";
   const isDashboard = location.pathname.startsWith("/dashboard") || location.pathname === "/import";
   const isStaffApp = location.pathname === "/expense" || location.pathname === "/staff";
+  const isManagerApp = location.pathname.startsWith("/manager");
 
   const isSuperAdmin = useMemo(() => {
     if (!user) return false;
@@ -2199,7 +2201,7 @@ function AppContent({ user, setUser, authLoading, businessInfo, setBusinessInfo,
         </div>
       )}
 
-      {!isDigitalMenu && !isDashboard && !isStaffApp && !isEmployee && (
+      {!isDigitalMenu && !isDashboard && !isStaffApp && !isManagerApp && !isEmployee && (
         <Navbar canAccessDashboard={isMarketing} setUser={setUser} companyProfile={companyProfile} />
       )}
 
@@ -2221,6 +2223,21 @@ function AppContent({ user, setUser, authLoading, businessInfo, setBusinessInfo,
           authLoading
             ? <div className="fixed inset-0 z-50 bg-cream flex items-center justify-center"><Loader2 size={28} className="animate-spin text-gold" /></div>
             : (isStaff ? <StaffPortal /> : <Navigate to="/" replace />)
+        } />
+
+        {/* Manager mobile app — Finance Overview + Daily Balances, installable as its own PWA (see manifest-manager.json) */}
+        <Route path="/manager/*" element={
+          authLoading
+            ? <div style={{ minHeight: '100vh', background: '#141414', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 size={28} className="animate-spin" style={{ color: '#1DA0A8' }} /></div>
+            : !user
+              ? <Navigate to="/admin/login?next=/manager" replace />
+              : (isManager
+                  ? <ManagerApp user={user} />
+                  : <div style={{ minHeight: '100vh', background: '#141414', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', gap: 16 }}>
+                      <span style={{ color: '#F6F1E6', fontFamily: 'var(--font-sans)', fontSize: 16 }}>Access Denied</span>
+                      <span style={{ color: '#A39A8C', fontFamily: 'var(--font-sans)', fontSize: 13, maxWidth: 280 }}>This app is for owners and managers only. Signed in as {user?.email}.</span>
+                      <button onClick={() => signOut(auth)} className="hw-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><LogOut size={16} /> Sign Out</button>
+                    </div>)
         } />
 
         {/* Dashboard Routes with Sidebar Layout */}
@@ -2252,7 +2269,7 @@ function AppContent({ user, setUser, authLoading, businessInfo, setBusinessInfo,
         <Route path="/admin/login" element={<AdminLogin />} />
       </Routes>
 
-      {!isDigitalMenu && ((!isDashboard && !isStaffApp) || !user) && (
+      {!isDigitalMenu && !isManagerApp && ((!isDashboard && !isStaffApp) || !user) && (
         <div style={{ position: 'fixed', bottom: 16, right: 16, zIndex: 60 }}>
           <Auth onUserChange={setUser} />
         </div>

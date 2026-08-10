@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { auth, db } from '../../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { logActivity } from '../../utils/logger';
@@ -38,6 +38,12 @@ export default function AdminLogin() {
     return () => unsub();
   }, []);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Optional ?next=/manager to send managers back to the mobile app instead
+  // of the full desktop dashboard. Only same-origin relative paths are
+  // honored (must start with a single "/") to avoid an open-redirect.
+  const rawNext = searchParams.get('next') || '/dashboard';
+  const redirectTo = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard';
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +52,7 @@ export default function AdminLogin() {
       await signInWithEmailAndPassword(auth, email, password);
       await logActivity('Staff Login', `Email login · ${email}`, 'user');
       toast.success('Login successful!');
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (error: any) {
       console.error('Login error:', error);
       let message = 'Invalid email or password.';
@@ -69,7 +75,7 @@ export default function AdminLogin() {
       const result = await signInWithPopup(auth, provider);
       await logActivity('Staff Login', `Google login · ${result.user.email}`, 'user');
       toast.success('Successfully logged in!');
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (error: any) {
       console.error('Google login failed:', error);
       let message = 'Google login failed. Please try again.';
@@ -174,7 +180,9 @@ export default function AdminLogin() {
               color: T.muted,
               margin: 0,
             }}>
-              Enter your credentials to access the dashboard
+              {redirectTo === '/manager'
+                ? 'Sign in to the Hemingways Manager app'
+                : 'Enter your credentials to access the dashboard'}
             </p>
           </div>
 
@@ -350,6 +358,19 @@ export default function AdminLogin() {
             <Globe size={16} style={{ color: T.gold400 }} />
             Sign in with Google
           </button>
+
+          {redirectTo === '/manager' && (
+            <p style={{
+              fontFamily: "'Barlow', sans-serif",
+              fontSize: 11,
+              color: T.faint,
+              textAlign: 'center',
+              margin: '12px 0 0',
+              lineHeight: 1.5,
+            }}>
+              If you've installed the app to your home screen, email &amp; password sign-in works most reliably.
+            </p>
+          )}
         </div>
 
         {/* Footer bar */}
