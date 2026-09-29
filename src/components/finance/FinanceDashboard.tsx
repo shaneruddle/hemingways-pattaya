@@ -16,8 +16,8 @@ export type FinanceRole = 'owner' | 'manager' | 'cashier';
 // duplicating this logic.
 export function getFinanceRole(user: any): FinanceRole {
   if (!user) return 'cashier';
-  // Only super_admin sees net profit
-  if (user.role === 'super_admin') return 'owner';
+  // Only super_admin (or Shane's own account, regardless of role) sees net profit + Reports
+  if (user.role === 'super_admin' || user.email?.toLowerCase() === 'shaneruddle@gmail.com') return 'owner';
   // admin (including info@), manager see income + expenses but not profit
   if (user.role === 'admin' || user.role === 'manager' || user.email?.toLowerCase() === 'info@hemingwayspattaya.com') return 'manager';
   return 'cashier';
