@@ -111,13 +111,13 @@ function totalsFromDocs(incomeDocs: any[], expenseDocs: any[], startDate: string
   return { income: round2(income), cogsExpense: round2(cogsExpense), operatingExpense: round2(operatingExpense), dividends: round2(dividends) };
 }
 
-// Completed months from AUTO_SYNC_START up to (not including) the current month, GMT+7.
+// Months from AUTO_SYNC_START up to AND including the current (in-progress) month, GMT+7.
 function completedSyncMonths(): { year: number; month: number }[] {
   const now = new Date(Date.now() + 7 * 60 * 60 * 1000); // Pattaya time
   const cur = { year: now.getUTCFullYear(), month: now.getUTCMonth() };
   const out: { year: number; month: number }[] = [];
   let m = { ...AUTO_SYNC_START };
-  while (m.year < cur.year || (m.year === cur.year && m.month < cur.month)) {
+  while (m.year < cur.year || (m.year === cur.year && m.month <= cur.month)) {
     out.push(m);
     m = nextMonth(m.year, m.month);
   }
@@ -176,7 +176,7 @@ export default function MonthlySummary() {
     return () => { u1(); u2(); };
   }, []);
 
-  // Auto-sync: create / update every completed month from August 2026 onward whenever
+  // Auto-sync: create / update every month (including the current one) from August 2026 onward whenever
   // income or expenses change. Balances chain from the last imported month (July 2026).
   // Only writes when a figure actually differs, so the rows snapshot settles immediately.
   const syncingRef = useRef(false);
