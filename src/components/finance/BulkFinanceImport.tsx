@@ -43,7 +43,7 @@ const EXPENSE_CATEGORIES = [
   { id: 'uncategorized',         name: 'Uncategorized Expense' },
 ];
 
-const INCOME_CATEGORIES = ['Food', 'Drinks', 'Meal Preps', 'Catering', 'Other'];
+const INCOME_CATEGORIES = ['Food & Drink', 'Meal Preps', 'Catering', 'Other'];
 
 const DEFAULT_EXPENSE_MAP: Record<string, string> = {
   'Food Expense':            'food_expense',
@@ -82,8 +82,8 @@ const DEFAULT_EXPENSE_MAP: Record<string, string> = {
 
 const DEFAULT_INCOME_MAP: Record<string, string> = {
   'Other Incomes':       'Other',
-  'Food & Drink Income ': 'Food',
-  'Food & Drink Income':  'Food',
+  'Food & Drink Income ': 'Food & Drink',
+  'Food & Drink Income':  'Food & Drink',
 };
 
 // ── CSV parser ─────────────────────────────────────────────────────────────────
