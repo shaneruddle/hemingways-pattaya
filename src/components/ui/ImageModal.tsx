@@ -9,9 +9,14 @@ interface ImageModalProps {
   onClose: () => void;
   src: string;
   alt: string;
+  /** Optional item details shown in large, readable type beneath the image. */
+  title?: string;
+  price?: string;
+  description?: string;
+  extra?: React.ReactNode;
 }
 
-export const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, src, alt }) => {
+export const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, src, alt, title, price, description, extra }) => {
   // Keyboard access: Escape closes the modal, matching the click-outside behavior.
   useEffect(() => {
     if (!isOpen) return;
@@ -23,6 +28,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, src, al
   }, [isOpen, onClose]);
 
   if (typeof document === 'undefined') return null;
+
+  const hasDetails = Boolean(title || price || description || extra);
 
   return createPortal(
     <AnimatePresence>
@@ -40,7 +47,9 @@ export const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, src, al
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.85, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative max-w-5xl w-full max-h-[90vh] bg-black/20 rounded-[32px] overflow-hidden shadow-2xl z-[10000] flex items-center justify-center"
+            className={`relative max-w-5xl w-full max-h-[90vh] rounded-[32px] shadow-2xl z-[10000] flex ${
+              hasDetails ? 'flex-col bg-white overflow-y-auto' : 'items-center justify-center bg-black/20 overflow-hidden'
+            }`}
             role="dialog"
             aria-modal="true"
             aria-label={alt || 'Enlarged image'}
@@ -52,15 +61,36 @@ export const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, src, al
             >
               <X size={28} />
             </button>
-            <div className="w-full h-full flex items-center justify-center">
+            <div className={`w-full flex items-center justify-center ${hasDetails ? 'bg-black shrink-0' : 'h-full'}`}>
               <FirebaseImage
                 src={src}
                 alt={alt}
-                className="max-h-[90vh] w-full object-contain"
+                className={`${hasDetails ? 'max-h-[55vh]' : 'max-h-[90vh]'} w-full object-contain`}
                 useSkeleton={true}
                 width="800"
               />
             </div>
+            {hasDetails && (
+              <div className="p-6 sm:p-8 text-left">
+                {(title || price) && (
+                  <div className="flex items-baseline w-full gap-3 mb-3">
+                    {title && (
+                      <h2 className="text-3xl sm:text-4xl font-bold text-ink leading-tight">{title}</h2>
+                    )}
+                    {price && (
+                      <>
+                        <div className="flex-1 border-b border-dotted border-gray-300 mb-1" />
+                        <span className="text-3xl sm:text-4xl font-black text-gold whitespace-nowrap shrink-0">{price}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {description && (
+                  <p className="text-gray-700 text-lg sm:text-xl leading-relaxed">{description}</p>
+                )}
+                {extra && <div className="mt-2 text-xl sm:text-2xl">{extra}</div>}
+              </div>
+            )}
           </motion.div>
         </div>
       )}

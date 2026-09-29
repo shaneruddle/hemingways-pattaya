@@ -88,6 +88,10 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
         onClose={() => setIsModalOpen(false)}
         src={imageUrl}
         alt={localizedName}
+        title={localizedName}
+        price={item.price ? `฿${item.price.replace('฿', '').trim()}` : undefined}
+        description={getLocalizedDesc(item)}
+        extra={renderPrice(item)}
       />
     </div>
   );
