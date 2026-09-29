@@ -3,7 +3,8 @@ import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, d
 import { db, auth } from '../../firebase';
 import { logActivity } from '../../utils/logger';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, X, RefreshCw, Download, StickyNote } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, X, RefreshCw, Download, StickyNote, Scale } from 'lucide-react';
+import ReconcileModal from './ReconcileModal';
 import { MonthlySummaryRow } from './types';
 
 const fmt = (n: number) => `฿${(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -139,6 +140,7 @@ export default function MonthlySummary() {
   const [noteRow, setNoteRow] = useState<MonthlySummaryRow | null>(null);
   const [noteText, setNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [reconRow, setReconRow] = useState<MonthlySummaryRow | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(''); // 'YYYY-MM', Add-mode month picker
   const [autoCalcLoading, setAutoCalcLoading] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -524,6 +526,9 @@ export default function MonthlySummary() {
                         >
                           <StickyNote size={14} />
                         </button>
+                        <button onClick={() => setReconRow(r)} className="text-gray-400 hover:text-[#1DA0A8] transition-colors" title="Reconcile">
+                          <Scale size={14} />
+                        </button>
                         <button onClick={() => openEdit(r)} className="text-gray-400 hover:text-[#1DA0A8] transition-colors" title="Edit">
                           <Pencil size={14} />
                         </button>
@@ -665,6 +670,8 @@ export default function MonthlySummary() {
           </div>
         </div>
       )}
+
+      {reconRow && <ReconcileModal row={reconRow} onClose={() => setReconRow(null)} />}
 
       {noteRow && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={closeNote}>

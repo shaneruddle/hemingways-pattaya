@@ -131,3 +131,24 @@ export interface MonthlySummaryRow {
   updatedAt?: string;
   updatedBy?: string;
 }
+
+// One saved cash/bank count against a Monthly Summary month's closing balance.
+// shaneruddle@gmail.com only — see ReconcileModal.tsx.
+export interface Reconciliation {
+  id?: string;
+  monthLabel: string; // e.g. "August 2026"
+  monthRowId: string;
+  systemBalance: number; // the month's newBalance at the time of counting
+  bank: number;
+  bankNote: string;
+  cash: number;
+  cashNote: string;
+  other: number;
+  otherNote: string;
+  float: number; // fixed FLOAT_AMOUNT
+  floatNote: string;
+  totalCounted: number; // bank + cash + other + float
+  difference: number; // totalCounted - systemBalance
+  createdAt: string;
+  createdBy: string;
+}

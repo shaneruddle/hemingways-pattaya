@@ -187,6 +187,16 @@ service cloud.firestore {
       allow delete: if isShane();
     }
 
+    // RECONCILIATIONS (shaneruddle@gmail.com ONLY) — saved counts vs Monthly Summary balances.
+    match /finance_reconciliations/{id} {
+      allow read, delete: if isShane();
+      allow create, update: if isShane() &&
+        incoming().keys().hasAll(['monthLabel', 'systemBalance', 'bank', 'cash', 'other', 'float', 'totalCounted', 'difference']) &&
+        incoming().monthLabel is string && incoming().systemBalance is number &&
+        incoming().bank is number && incoming().cash is number && incoming().other is number &&
+        incoming().float is number && incoming().totalCounted is number && incoming().difference is number;
+    }
+
     match /finance_ingredients/{id} {
       allow read: if isStaff();
       allow write: if isStaff();
