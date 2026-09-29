@@ -30,6 +30,13 @@ export const DIVIDEND_CATEGORY_NAME = 'Dividends';
 // manually from historical records and should not be silently overwritten from live data.
 const AUTO_CALC_START = { year: 2026, month: 6 }; // month is 0-indexed (6 = July)
 
+// From this month onward, every COMPLETED month is created and kept up to date
+// automatically from finance_income / finance_expenses (see the auto-sync effect in
+// MonthlySummary below). July 2026 and earlier are imported history and never touched.
+const AUTO_SYNC_START = { year: 2026, month: 7 }; // 0-indexed (7 = August)
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 function isAutoCalcEligible(year: number, month: number) {
   return year > AUTO_CALC_START.year || (year === AUTO_CALC_START.year && month >= AUTO_CALC_START.month);
 }
@@ -85,6 +92,40 @@ async function computeMonthTotals(year: number, month: number) {
   return { income, cogsExpense, operatingExpense, dividends };
 }
 
+// Same categorisation as computeMonthTotals(), applied to already-loaded docs so the
+// auto-sync can recalculate every synced month from one live listener per collection.
+function totalsFromDocs(incomeDocs: any[], expenseDocs: any[], startDate: string, endDate: string) {
+  const inRange = (d: any) => typeof d.date === 'string' && d.date >= startDate && d.date < endDate;
+  const income = incomeDocs.filter(inRange).reduce((s, d) => s + (d.amount || 0), 0);
+  let cogsExpense = 0;
+  let operatingExpense = 0;
+  let dividends = 0;
+  expenseDocs.filter(inRange).forEach(e => {
+    const total = e.total || 0;
+    const isDividend = e.category_id === DIVIDEND_CATEGORY_ID || e.category_name === DIVIDEND_CATEGORY_NAME;
+    const isCogs = (e.category_id && COGS_CATEGORY_IDS.has(e.category_id)) || COGS_CATEGORY_NAMES.has(e.category_name);
+    if (isDividend) dividends += total;
+    else if (isCogs) cogsExpense += total;
+    else operatingExpense += total;
+  });
+  return { income: round2(income), cogsExpense: round2(cogsExpense), operatingExpense: round2(operatingExpense), dividends: round2(dividends) };
+}
+
+// Completed months from AUTO_SYNC_START up to (not including) the current month, GMT+7.
+function completedSyncMonths(): { year: number; month: number }[] {
+  const now = new Date(Date.now() + 7 * 60 * 60 * 1000); // Pattaya time
+  const cur = { year: now.getUTCFullYear(), month: now.getUTCMonth() };
+  const out: { year: number; month: number }[] = [];
+  let m = { ...AUTO_SYNC_START };
+  while (m.year < cur.year || (m.year === cur.year && m.month < cur.month)) {
+    out.push(m);
+    m = nextMonth(m.year, m.month);
+  }
+  return out;
+}
+
+const monthStart = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, '0')}-01`;
+
 export default function MonthlySummary() {
   const [rows, setRows] = useState<MonthlySummaryRow[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,6 +163,67 @@ export default function MonthlySummary() {
     );
     return () => unsub();
   }, []);
+
+  // Live finance data from AUTO_SYNC_START onward, used to keep synced months current.
+  const [syncIncome, setSyncIncome] = useState<any[] | null>(null);
+  const [syncExpenses, setSyncExpenses] = useState<any[] | null>(null);
+  useEffect(() => {
+    const start = monthStart(AUTO_SYNC_START.year, AUTO_SYNC_START.month);
+    const u1 = onSnapshot(query(collection(db, 'finance_income'), where('date', '>=', start)),
+      snap => setSyncIncome(snap.docs.map(d => d.data())), err => console.error('Auto-sync income:', err));
+    const u2 = onSnapshot(query(collection(db, 'finance_expenses'), where('date', '>=', start)),
+      snap => setSyncExpenses(snap.docs.map(d => d.data())), err => console.error('Auto-sync expenses:', err));
+    return () => { u1(); u2(); };
+  }, []);
+
+  // Auto-sync: create / update every completed month from August 2026 onward whenever
+  // income or expenses change. Balances chain from the last imported month (July 2026).
+  // Only writes when a figure actually differs, so the rows snapshot settles immediately.
+  const syncingRef = useRef(false);
+  useEffect(() => {
+    if (!rows || !syncIncome || !syncExpenses || syncingRef.current) return;
+    const months = completedSyncMonths();
+    if (months.length === 0) return;
+    const firstLabel = formatMonthLabel(months[0].year, months[0].month);
+    const byLabel = new Map(rows.map(r => [r.label, r]));
+    const prior = [...rows].filter(r => !byLabel.has(firstLabel) || r.order < byLabel.get(firstLabel)!.order).pop();
+    if (!prior) return; // nothing to chain from yet
+
+    const run = async () => {
+      syncingRef.current = true;
+      try {
+        let balance = prior.newBalance;
+        let order = Math.max(...rows.map(r => r.order));
+        const nowIso = new Date().toISOString();
+        const by = auth.currentUser?.email || 'auto-sync';
+        for (const m of months) {
+          const label = formatMonthLabel(m.year, m.month);
+          const next = nextMonth(m.year, m.month);
+          const t = totalsFromDocs(syncIncome, syncExpenses, monthStart(m.year, m.month), monthStart(next.year, next.month));
+          const profit = round2(t.income - t.cogsExpense - t.operatingExpense);
+          const newBalance = round2(balance + profit - t.dividends);
+          const data = { label, balance: round2(balance), ...t, profit, newBalance };
+          const existing = byLabel.get(label);
+          if (!existing) {
+            order += 1;
+            await addDoc(collection(db, 'finance_monthly_summary'), { ...data, order, autoSynced: true, createdAt: nowIso, updatedAt: nowIso, updatedBy: by });
+          } else {
+            const changed = (['balance', 'income', 'cogsExpense', 'operatingExpense', 'dividends', 'profit', 'newBalance'] as const)
+              .some(k => round2((existing as any)[k] || 0) !== (data as any)[k]);
+            if (changed) {
+              await updateDoc(doc(db, 'finance_monthly_summary', existing.id!), { ...data, autoSynced: true, updatedAt: nowIso, updatedBy: by });
+            }
+          }
+          balance = newBalance;
+        }
+      } catch (err) {
+        console.error('Monthly Summary auto-sync failed:', err);
+      } finally {
+        syncingRef.current = false;
+      }
+    };
+    run();
+  }, [rows, syncIncome, syncExpenses]);
 
   const nextOrder = useMemo(
     () => (rows && rows.length > 0 ? Math.max(...rows.map(r => r.order)) + 1 : 0),
@@ -356,7 +458,7 @@ export default function MonthlySummary() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Monthly Summary</h1>
-          <p className="text-xs text-gray-400 mt-1">Super admin only · running balance, income, expenses, profit &amp; dividends by month</p>
+          <p className="text-xs text-gray-400 mt-1">Private · August 2026 onward updates automatically from Finance · running balance, income, expenses, profit &amp; dividends by month</p>
         </div>
         <button
           onClick={openAdd}
