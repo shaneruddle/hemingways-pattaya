@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { logActivity } from '../../utils/logger';
@@ -65,6 +65,19 @@ export default function ReconcileModal({ row, onClose }: { row: MonthlySummaryRo
     );
   }, [row.label]);
 
+  // Pre-fill once from the most recent saved count for this month, so reopening the
+  // pop-up shows what was entered last time instead of a blank form.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (prefilled.current || history.length === 0) return;
+    prefilled.current = true;
+    const last = history[0];
+    const str = (n: number) => (n ? String(n) : '');
+    setValues({ bank: str(last.bank), cash: str(last.cash), other: str(last.other) });
+    setNotes({ bank: last.bankNote || '', cash: last.cashNote || '', other: last.otherNote || '', float: last.floatNote || '' });
+    setOpenNotes({ bank: !!last.bankNote, cash: !!last.cashNote, other: !!last.otherNote, float: !!last.floatNote });
+  }, [history]);
+
   const systemBalance = row.newBalance || 0;
   const counted = round2(num(values.bank) + num(values.cash) + num(values.other) + FLOAT_AMOUNT);
   const difference = round2(counted - systemBalance);
@@ -91,10 +104,9 @@ export default function ReconcileModal({ row, onClose }: { row: MonthlySummaryRo
       };
       await addDoc(collection(db, 'finance_reconciliations'), data);
       await logActivity('Reconciliation Saved', `${row.label} · difference ${fmt(difference)}`, 'finance');
+      // Keep the figures on screen after saving — the form stays pre-filled with the
+      // latest count so it can be adjusted and re-saved.
       toast.success('Reconciliation saved');
-      setValues({ bank: '', cash: '', other: '' });
-      setNotes({ bank: '', cash: '', other: '', float: '' });
-      setOpenNotes({});
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || 'Failed to save reconciliation');
