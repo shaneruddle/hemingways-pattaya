@@ -443,7 +443,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
 
   const openNote = (r: MonthlySummaryRow) => {
     setNoteRow(r);
-    setNoteText(privateNotes[r.id] || '');
+    setNoteText(privateNotes[r.id] ?? r.notes ?? '');
   };
 
   const closeNote = () => {
@@ -560,8 +560,8 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                         </button>
                         <button
                           onClick={() => openNote(r)}
-                          className={`transition-colors ${privateNotes[r.id]?.trim() ? 'text-[#1DA0A8]' : 'text-gray-400 hover:text-[#1DA0A8]'}`}
-                          title={privateNotes[r.id]?.trim() ? 'View/edit note' : 'Add note'}
+                          className={`transition-colors ${(privateNotes[r.id] ?? r.notes)?.trim() ? 'text-[#1DA0A8]' : 'text-gray-400 hover:text-[#1DA0A8]'}`}
+                          title={(privateNotes[r.id] ?? r.notes)?.trim() ? 'View/edit note' : 'Add note'}
                         >
                           <StickyNote size={14} />
                         </button>
