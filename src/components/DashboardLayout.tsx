@@ -23,6 +23,7 @@ import {
   Trophy,
   Landmark
 } from 'lucide-react';
+import { isPartnerEmail } from '../utils/partners';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
@@ -230,6 +231,7 @@ export default function DashboardLayout({ user }: { user: any }) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const role: string = user?.role || '';
+  const isPartner = isPartnerEmail(user?.email);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'companyProfile', 'config'), (snap) => {
@@ -368,7 +370,7 @@ export default function DashboardLayout({ user }: { user: any }) {
           )}
 
           {/* Finance */}
-          {canSeeFinance(role) && (
+          {(canSeeFinance(role) || isPartner) && (
             <SidebarItem
               icon={<span style={{ fontWeight: 700, fontSize: 18, lineHeight: 1, fontFamily: 'monospace' }}>฿</span>}
               label="Finance"
@@ -378,8 +380,8 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {/* Monthly Summary (super admin only) */}
-          {canSeeMonthlySummary(user?.email) && (
+          {/* Monthly Summary (Shane; partners read-only) */}
+          {(canSeeMonthlySummary(user?.email) || isPartner) && (
             <SidebarItem
               icon={<Landmark size={18} />}
               label="Monthly Summary"

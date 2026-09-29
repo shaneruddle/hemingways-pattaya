@@ -33,7 +33,7 @@ export default function FinanceOverview({ financeRole = 'owner' }: { financeRole
   const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.total, 0), [expenses]);
   const totalIncome = useMemo(() => income.reduce((s, i) => s + i.amount, 0), [income]);
   const net = totalIncome - totalExpenses;
-  const showProfit = financeRole === 'owner';
+  const showProfit = financeRole === 'owner' || financeRole === 'partner';
 
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};

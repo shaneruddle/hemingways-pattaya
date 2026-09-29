@@ -33,7 +33,8 @@ interface Row {
 }
 
 export default function TransactionLedger({ kind, financeRole = 'owner' }: { kind: 'expense' | 'income'; financeRole?: string }) {
-  const canManage = financeRole !== 'cashier';
+  // Partners are read-only; cashiers never manage.
+  const canManage = financeRole !== 'cashier' && financeRole !== 'partner';
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

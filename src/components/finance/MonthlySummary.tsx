@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, where, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { logActivity } from '../../utils/logger';
 import { toast } from 'sonner';
@@ -127,7 +127,7 @@ function completedSyncMonths(): { year: number; month: number }[] {
 
 const monthStart = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, '0')}-01`;
 
-export default function MonthlySummary() {
+export default function MonthlySummary({ readOnly = false }: { readOnly?: boolean } = {}) {
   const [rows, setRows] = useState<MonthlySummaryRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,34 +178,54 @@ export default function MonthlySummary() {
     return () => { u1(); u2(); };
   }, []);
 
-  // Auto-sync: create / update every month (including the current one) from August 2026 onward whenever
-  // income or expenses change. Balances chain from the last imported month (July 2026).
-  // Only writes when a figure actually differs, so the rows snapshot settles immediately.
-  const syncingRef = useRef(false);
+  // Private month notes live in their own owner-only collection (keyed by the month
+  // row's id) so read-only partners can't see them, even in the raw data.
+  const [privateNotes, setPrivateNotes] = useState<Record<string, string>>({});
   useEffect(() => {
-    if (!rows || !syncIncome || !syncExpenses || syncingRef.current) return;
+    if (readOnly) return;
+    return onSnapshot(collection(db, 'finance_monthly_summary_notes'),
+      snap => setPrivateNotes(Object.fromEntries(snap.docs.map(d => [d.id, (d.data().notes as string) || '']))),
+      err => console.error('Monthly Summary notes:', err));
+  }, [readOnly]);
+
+  // Live figures for every synced month (August 2026 onward, including the current
+  // month), chained from the last imported month's closing balance. Pure — used both
+  // to persist (owner) and to display live (read-only partners, who can't write).
+  const computedSync = useMemo(() => {
+    if (!rows || !syncIncome || !syncExpenses) return null;
     const months = completedSyncMonths();
-    if (months.length === 0) return;
+    if (months.length === 0) return null;
     const firstLabel = formatMonthLabel(months[0].year, months[0].month);
     const byLabel = new Map(rows.map(r => [r.label, r]));
     const prior = [...rows].filter(r => !byLabel.has(firstLabel) || r.order < byLabel.get(firstLabel)!.order).pop();
-    if (!prior) return; // nothing to chain from yet
+    if (!prior) return null; // nothing to chain from yet
+    let balance = prior.newBalance;
+    return months.map(m => {
+      const label = formatMonthLabel(m.year, m.month);
+      const next = nextMonth(m.year, m.month);
+      const t = totalsFromDocs(syncIncome, syncExpenses, monthStart(m.year, m.month), monthStart(next.year, next.month));
+      const profit = round2(t.income - t.cogsExpense - t.operatingExpense);
+      const newBalance = round2(balance + profit - t.dividends);
+      const data = { label, balance: round2(balance), ...t, profit, newBalance };
+      balance = newBalance;
+      return data;
+    });
+  }, [rows, syncIncome, syncExpenses]);
 
+  // Auto-sync (owner only): persist computedSync — create missing months, update changed
+  // ones. Only writes when a figure actually differs, so the rows snapshot settles at once.
+  const syncingRef = useRef(false);
+  useEffect(() => {
+    if (readOnly || !rows || !computedSync || syncingRef.current) return;
     const run = async () => {
       syncingRef.current = true;
       try {
-        let balance = prior.newBalance;
+        const byLabel = new Map(rows.map(r => [r.label, r]));
         let order = Math.max(...rows.map(r => r.order));
         const nowIso = new Date().toISOString();
         const by = auth.currentUser?.email || 'auto-sync';
-        for (const m of months) {
-          const label = formatMonthLabel(m.year, m.month);
-          const next = nextMonth(m.year, m.month);
-          const t = totalsFromDocs(syncIncome, syncExpenses, monthStart(m.year, m.month), monthStart(next.year, next.month));
-          const profit = round2(t.income - t.cogsExpense - t.operatingExpense);
-          const newBalance = round2(balance + profit - t.dividends);
-          const data = { label, balance: round2(balance), ...t, profit, newBalance };
-          const existing = byLabel.get(label);
+        for (const data of computedSync) {
+          const existing = byLabel.get(data.label);
           if (!existing) {
             order += 1;
             await addDoc(collection(db, 'finance_monthly_summary'), { ...data, order, autoSynced: true, createdAt: nowIso, updatedAt: nowIso, updatedBy: by });
@@ -216,7 +236,6 @@ export default function MonthlySummary() {
               await updateDoc(doc(db, 'finance_monthly_summary', existing.id!), { ...data, autoSynced: true, updatedAt: nowIso, updatedBy: by });
             }
           }
-          balance = newBalance;
         }
       } catch (err) {
         console.error('Monthly Summary auto-sync failed:', err);
@@ -225,7 +244,7 @@ export default function MonthlySummary() {
       }
     };
     run();
-  }, [rows, syncIncome, syncExpenses]);
+  }, [readOnly, rows, computedSync]);
 
   const nextOrder = useMemo(
     () => (rows && rows.length > 0 ? Math.max(...rows.map(r => r.order)) + 1 : 0),
@@ -236,7 +255,19 @@ export default function MonthlySummary() {
     [rows]
   );
   // Fetched oldest-first (needed for nextOrder/lastNewBalance above); displayed newest-first.
-  const displayRows = useMemo(() => (rows ? [...rows].reverse() : rows), [rows]);
+  // Partners see synced months live from Finance (they can't write, so stored rows may
+  // lag until the owner next opens the page); the owner sees the stored rows.
+  const displayRows = useMemo(() => {
+    if (!rows) return rows;
+    if (!readOnly || !computedSync) return [...rows].reverse();
+    const live = new Map(computedSync.map(d => [d.label, d]));
+    const merged = rows.map(r => (live.has(r.label) ? { ...r, ...live.get(r.label)! } : r));
+    let order = Math.max(...rows.map(r => r.order));
+    computedSync.forEach(d => {
+      if (!rows.some(r => r.label === d.label)) merged.push({ id: `live-${d.label}`, order: ++order, ...d } as MonthlySummaryRow);
+    });
+    return merged.reverse();
+  }, [rows, readOnly, computedSync]);
 
   // Runs the live aggregation for a given month and fills it into the form. Used both
   // by the Add-mode month picker and the Edit-mode "Recalculate" button.
@@ -412,7 +443,7 @@ export default function MonthlySummary() {
 
   const openNote = (r: MonthlySummaryRow) => {
     setNoteRow(r);
-    setNoteText(r.notes || '');
+    setNoteText(privateNotes[r.id] || '');
   };
 
   const closeNote = () => {
@@ -424,8 +455,9 @@ export default function MonthlySummary() {
     if (!noteRow) return;
     setSavingNote(true);
     try {
-      await updateDoc(doc(db, 'finance_monthly_summary', noteRow.id), {
+      await setDoc(doc(db, 'finance_monthly_summary_notes', noteRow.id), {
         notes: noteText.trim(),
+        label: noteRow.label,
         updatedAt: new Date().toISOString(),
         updatedBy: auth.currentUser?.email || 'unknown',
       });
@@ -460,14 +492,20 @@ export default function MonthlySummary() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Monthly Summary</h1>
-          <p className="text-xs text-gray-400 mt-1">Private · August 2026 onward updates automatically from Finance · running balance, income, expenses, profit &amp; dividends by month</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {readOnly
+              ? 'Read-only · August 2026 onward updates live from Finance · running balance, income, expenses, profit & dividends by month'
+              : 'Private · August 2026 onward updates automatically from Finance · running balance, income, expenses, profit & dividends by month'}
+          </p>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1DA0A8] text-white rounded-xl text-sm font-bold hover:bg-[#18919a] transition-all"
-        >
-          <Plus size={16} /> Add Month
-        </button>
+        {!readOnly && (
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1DA0A8] text-white rounded-xl text-sm font-bold hover:bg-[#18919a] transition-all"
+          >
+            <Plus size={16} /> Add Month
+          </button>
+        )}
       </div>
 
       {loading && (
@@ -495,7 +533,7 @@ export default function MonthlySummary() {
                   <th className="px-4 py-3 text-right">Profit</th>
                   <th className="px-4 py-3 text-right">Dividends</th>
                   <th className="px-4 py-3 text-right">New Balance</th>
-                  <th className="px-4 py-3 text-center">Actions</th>
+                  {!readOnly && <th className="px-4 py-3 text-center">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -509,6 +547,7 @@ export default function MonthlySummary() {
                     <td className={`px-4 py-3 text-right font-bold ${r.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(r.profit)}</td>
                     <td className="px-4 py-3 text-right text-gray-600">{fmt(r.dividends)}</td>
                     <td className="px-4 py-3 text-right font-bold text-ink">{fmt(r.newBalance)}</td>
+                    {!readOnly && (
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-3">
                         <button
@@ -521,8 +560,8 @@ export default function MonthlySummary() {
                         </button>
                         <button
                           onClick={() => openNote(r)}
-                          className={`transition-colors ${r.notes?.trim() ? 'text-[#1DA0A8]' : 'text-gray-400 hover:text-[#1DA0A8]'}`}
-                          title={r.notes?.trim() ? 'View/edit note' : 'Add note'}
+                          className={`transition-colors ${privateNotes[r.id]?.trim() ? 'text-[#1DA0A8]' : 'text-gray-400 hover:text-[#1DA0A8]'}`}
+                          title={privateNotes[r.id]?.trim() ? 'View/edit note' : 'Add note'}
                         >
                           <StickyNote size={14} />
                         </button>
@@ -542,6 +581,7 @@ export default function MonthlySummary() {
                         </button>
                       </div>
                     </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

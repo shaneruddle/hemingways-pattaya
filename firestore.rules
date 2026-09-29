@@ -17,6 +17,17 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email.lower() == "shaneruddle@gmail.com";
     }
 
+    // Business partners — read-only Monthly Summary + Finance Overview.
+    // Keep in sync with PARTNER_EMAILS in src/utils/partners.ts.
+    function isPartner() {
+      return isSignedIn() && request.auth.token.email.lower() in [
+        "robptomlin@gmail.com",
+        "chrisjudges1@live.co.uk",
+        "jay.mac80@icloud.com",
+        "weightman17@googlemail.com"
+      ];
+    }
+
     function isStaff() {
       return isSignedIn() && (
         isAdmin() ||
@@ -151,14 +162,14 @@ service cloud.firestore {
 
     // NEW FINANCE MODULE
     match /finance_expenses/{id} {
-      allow read: if isStaff();
+      allow read: if isStaff() || isPartner();
       allow create: if isStaff();
       allow update: if isStaff() && incoming().diff(existing()).affectedKeys().hasOnly(['total', 'category_id', 'category_name', 'notes']);
       allow delete: if isStaff();
     }
 
     match /finance_income/{id} {
-      allow read: if isStaff();
+      allow read: if isStaff() || isPartner();
       allow create: if isStaff();
       allow update, delete: if isAdmin();
     }
@@ -182,9 +193,14 @@ service cloud.firestore {
 
     // MONTHLY SUMMARY (shaneruddle@gmail.com ONLY — deliberately narrower than isAdmin())
     match /finance_monthly_summary/{id} {
-      allow read: if isShane();
+      allow read: if isShane() || isPartner();
       allow create, update: if isShane() && isValidMonthlySummaryRow(incoming());
       allow delete: if isShane();
+    }
+
+    // Private Monthly Summary notes, one doc per month row id — owner only (NOT partners).
+    match /finance_monthly_summary_notes/{id} {
+      allow read, write: if isShane();
     }
 
     // RECONCILIATIONS (shaneruddle@gmail.com ONLY) — saved counts vs Monthly Summary balances.

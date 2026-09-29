@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { auth, db } from '../../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -66,6 +66,21 @@ export default function AdminLogin() {
       toast.error(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Emails a password-set/reset link — also how partners set their first password.
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast.error('Enter your email address first.');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      toast.success('Password reset email sent — check your inbox (and spam).');
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      toast.error(error?.code === 'auth/invalid-email' ? 'That email address is not valid.' : 'Could not send reset email. Please try again.');
     }
   };
 
@@ -267,6 +282,13 @@ export default function AdminLogin() {
                   style={inputStyle(passFocus)}
                 />
               </div>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, color: T.muted, fontFamily: "'Barlow', sans-serif", fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Forgot password?
+              </button>
             </div>
 
             {/* Submit */}

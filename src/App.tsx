@@ -63,6 +63,7 @@ import BulkImport from "./components/BulkImport";
 import DigitalMenu from "./components/DigitalMenu";
 import DigitalMenuDisplay from "./components/DigitalMenuDisplay";
 import MonthlySummary from "./components/finance/MonthlySummary";
+import { isPartnerEmail } from "./utils/partners";
 import FinanceDashboard from "./components/finance/FinanceDashboard";
 import ManagerApp from "./components/manager/ManagerApp";
 import BulkFinanceImport from "./components/finance/BulkFinanceImport";
@@ -2153,9 +2154,12 @@ function AppContent({ user, setUser, authLoading, businessInfo, setBusinessInfo,
     return user?.role === 'cashier';
   }, [user]);
 
+  // Business partners: read-only Monthly Summary + Finance Overview, by email.
+  const isPartner = useMemo(() => isPartnerEmail(user?.email), [user]);
+
   const isEmployee = useMemo(() => {
-    return user?.role === 'employee';
-  }, [user]);
+    return user?.role === 'employee' && !isPartner;
+  }, [user, isPartner]);
 
   const navigate = useNavigate();
 
@@ -2255,11 +2259,11 @@ function AppContent({ user, setUser, authLoading, businessInfo, setBusinessInfo,
         } />
 
         {/* Dashboard Routes with Sidebar Layout */}
-        <Route path="/dashboard" element={isMarketing ? <DashboardLayout user={user} /> : <div style={{ paddingTop: 128, textAlign: 'center', height: '100vh', background: 'var(--ink-850)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>Access Denied. <Auth onUserChange={setUser} /></div>}>
-          <Route index element={isMarketing ? <Dashboard isSuperAdmin={isSuperAdmin} /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
+        <Route path="/dashboard" element={isMarketing || isPartner ? <DashboardLayout user={user} /> : <div style={{ paddingTop: 128, textAlign: 'center', height: '100vh', background: 'var(--ink-850)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>Access Denied. <Auth onUserChange={setUser} /></div>}>
+          <Route index element={isPartner && !isMarketing ? <Navigate to="/dashboard/monthly-summary" replace /> : isMarketing ? <Dashboard isSuperAdmin={isSuperAdmin} /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="categories" element={isMarketing ? <CategoriesDashboard /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
-          <Route path="finance" element={isManager ? <FinanceDashboard user={user} /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
-          <Route path="monthly-summary" element={user?.email?.toLowerCase() === "shaneruddle@gmail.com" ? <MonthlySummary /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
+          <Route path="finance" element={isManager || isPartner ? <FinanceDashboard user={user} /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
+          <Route path="monthly-summary" element={user?.email?.toLowerCase() === "shaneruddle@gmail.com" ? <MonthlySummary /> : isPartner ? <MonthlySummary readOnly /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="finance/import" element={isManager ? <BulkFinanceImport /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="users" element={isManager ? <UserManagement isSuperAdmin={isSuperAdmin} isAdmin={isAdmin} /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="loyalty" element={isManager ? <LoyaltyDashboard /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />

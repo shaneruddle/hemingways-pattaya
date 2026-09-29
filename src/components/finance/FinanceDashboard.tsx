@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import FinanceOverview from './FinanceOverview';
+import { isPartnerEmail } from '../../utils/partners';
 import LogExpense from './LogExpense';
 import LogIncome from './LogIncome';
 import Ingredients from './Ingredients';
@@ -10,12 +11,14 @@ import DailyBalances from './DailyBalances';
 import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, ChefHat, Upload, Truck, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export type FinanceRole = 'owner' | 'manager' | 'cashier';
+export type FinanceRole = 'owner' | 'manager' | 'cashier' | 'partner';
 
 // Exported so the /manager mobile app can compute the same role without
 // duplicating this logic.
 export function getFinanceRole(user: any): FinanceRole {
   if (!user) return 'cashier';
+  // Business partners: read-only Overview only (see ALL_TABS roles)
+  if (isPartnerEmail(user.email)) return 'partner';
   // Only super_admin (or Shane's own account, regardless of role) sees net profit + Reports
   if (user.role === 'super_admin' || user.email?.toLowerCase() === 'shaneruddle@gmail.com') return 'owner';
   // admin (including info@), manager see income + expenses but not profit
@@ -24,7 +27,7 @@ export function getFinanceRole(user: any): FinanceRole {
 }
 
 const ALL_TABS = [
-  { id: 'overview',     label: 'Overview',        icon: <LayoutDashboard size={16} />, roles: ['owner', 'manager'] },
+  { id: 'overview',     label: 'Overview',        icon: <LayoutDashboard size={16} />, roles: ['owner', 'manager', 'partner'] },
   { id: 'expense',      label: 'Log Expense',      icon: <Receipt size={16} />,         roles: ['owner', 'manager', 'cashier'] },
   { id: 'income',       label: 'Log Income',       icon: <TrendingUp size={16} />,      roles: ['owner', 'manager', 'cashier'] },
   // Owner + manager only (not cashier) — daily cash/bank reconciliation.
