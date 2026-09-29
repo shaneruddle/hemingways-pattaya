@@ -62,6 +62,7 @@ import { BlogList, BlogPostPage, LatestPosts } from "./components/Blog";
 import BulkImport from "./components/BulkImport";
 import DigitalMenu from "./components/DigitalMenu";
 import DigitalMenuDisplay from "./components/DigitalMenuDisplay";
+import MonthlySummary from "./components/finance/MonthlySummary";
 import FinanceDashboard from "./components/finance/FinanceDashboard";
 import ManagerApp from "./components/manager/ManagerApp";
 import BulkFinanceImport from "./components/finance/BulkFinanceImport";
@@ -2258,6 +2259,7 @@ function AppContent({ user, setUser, authLoading, businessInfo, setBusinessInfo,
           <Route index element={isMarketing ? <Dashboard isSuperAdmin={isSuperAdmin} /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="categories" element={isMarketing ? <CategoriesDashboard /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="finance" element={isManager ? <FinanceDashboard user={user} /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
+          <Route path="monthly-summary" element={isSuperAdmin ? <MonthlySummary /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="finance/import" element={isManager ? <BulkFinanceImport /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="users" element={isManager ? <UserManagement isSuperAdmin={isSuperAdmin} isAdmin={isAdmin} /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />
           <Route path="loyalty" element={isManager ? <LoyaltyDashboard /> : <div style={{ padding: 80, textAlign: 'center' }}>Access Denied</div>} />

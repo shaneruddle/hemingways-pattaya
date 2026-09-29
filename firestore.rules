@@ -12,6 +12,13 @@ service cloud.firestore {
       );
     }
     
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email.lower() == "shaneruddle@gmail.com") ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin")
+      );
+    }
+
     function isStaff() {
       return isSignedIn() && (
         isAdmin() ||
@@ -55,6 +62,19 @@ service cloud.firestore {
              data.email is string && data.email.size() <= 100 &&
              data.role in ['admin', 'staff', 'user', 'cashier', 'marketing', 'employee', 'admin'] &&
              data.uid == request.auth.uid;
+    }
+
+    function isValidMonthlySummaryRow(data) {
+      return data.keys().hasAll(['order', 'label', 'balance', 'income', 'cogsExpense', 'operatingExpense', 'dividends', 'profit', 'newBalance']) &&
+             data.order is number &&
+             data.label is string && data.label.size() <= 100 &&
+             data.balance is number &&
+             data.income is number &&
+             data.cogsExpense is number &&
+             data.operatingExpense is number &&
+             data.dividends is number &&
+             data.profit is number &&
+             data.newBalance is number;
     }
 
     function isValidFinanceEntry(data) {
@@ -160,6 +180,13 @@ service cloud.firestore {
         allow create: if isFinanceLead();
         allow update, delete: if false;
       }
+    }
+
+    // MONTHLY SUMMARY (SUPER ADMIN ONLY — deliberately narrower than isAdmin())
+    match /finance_monthly_summary/{id} {
+      allow read: if isSuperAdmin();
+      allow create, update: if isSuperAdmin() && isValidMonthlySummaryRow(incoming());
+      allow delete: if isSuperAdmin();
     }
 
     match /finance_ingredients/{id} {
