@@ -114,7 +114,7 @@ export interface DailyBalanceHistoryEntry {
 }
 
 // Manually-logged monthly ledger row (Balance / Income / COGS / Operating Expense /
-// Profit / Dividends / New Balance). Super admin only — see MonthlySummary.tsx.
+// Profit / Dividends / New Balance). shaneruddle@gmail.com only — see MonthlySummary.tsx.
 export interface MonthlySummaryRow {
   id: string;
   order: number; // sequential sort key (oldest first); not derived from `label`

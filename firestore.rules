@@ -12,11 +12,9 @@ service cloud.firestore {
       );
     }
     
-    function isSuperAdmin() {
-      return isSignedIn() && (
-        (request.auth.token.email.lower() == "shaneruddle@gmail.com") ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin")
-      );
+    // Monthly Summary owner — email only, deliberately not role-based.
+    function isShane() {
+      return isSignedIn() && request.auth.token.email.lower() == "shaneruddle@gmail.com";
     }
 
     function isStaff() {
@@ -182,11 +180,11 @@ service cloud.firestore {
       }
     }
 
-    // MONTHLY SUMMARY (SUPER ADMIN ONLY — deliberately narrower than isAdmin())
+    // MONTHLY SUMMARY (shaneruddle@gmail.com ONLY — deliberately narrower than isAdmin())
     match /finance_monthly_summary/{id} {
-      allow read: if isSuperAdmin();
-      allow create, update: if isSuperAdmin() && isValidMonthlySummaryRow(incoming());
-      allow delete: if isSuperAdmin();
+      allow read: if isShane();
+      allow create, update: if isShane() && isValidMonthlySummaryRow(incoming());
+      allow delete: if isShane();
     }
 
     match /finance_ingredients/{id} {

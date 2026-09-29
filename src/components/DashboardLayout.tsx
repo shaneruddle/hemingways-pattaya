@@ -57,10 +57,10 @@ function canSeeMenu(role: string) {
 function canSeeFinance(role: string) {
   return ['super_admin','admin','manager'].includes(role);
 }
-// Deliberately narrower than the other canSeeX() helpers — this page is
-// visible to the super admin only, not admin/manager.
-function canSeeMonthlySummary(role: string) {
-  return role === 'super_admin';
+// Deliberately narrower than the other canSeeX() helpers — this page (and its
+// partner PDF report) is visible to shaneruddle@gmail.com only, not any role.
+function canSeeMonthlySummary(email?: string | null) {
+  return email?.toLowerCase() === 'shaneruddle@gmail.com';
 }
 function canSeeLoyalty(role: string) {
   return ['super_admin','admin','manager'].includes(role);
@@ -379,7 +379,7 @@ export default function DashboardLayout({ user }: { user: any }) {
           )}
 
           {/* Monthly Summary (super admin only) */}
-          {canSeeMonthlySummary(role) && (
+          {canSeeMonthlySummary(user?.email) && (
             <SidebarItem
               icon={<Landmark size={18} />}
               label="Monthly Summary"
