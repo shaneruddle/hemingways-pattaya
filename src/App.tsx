@@ -1291,6 +1291,9 @@ const Footer = ({ companyProfile }: { companyProfile: CompanyProfile | null }) =
             Staff
           </Link>
         </p>
+        <p style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--text-faint)' }}>
+          Owned by <a href="https://shaneruddle.com" target="_blank" rel="noopener" style={{ color: 'inherit' }}>Shane Ruddle</a>
+        </p>
       </div>
     </footer>
   );
