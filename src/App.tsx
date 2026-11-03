@@ -1292,7 +1292,7 @@ const Footer = ({ companyProfile }: { companyProfile: CompanyProfile | null }) =
           </Link>
         </p>
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--text-faint)' }}>
-          Owned by <a href="https://shaneruddle.com" target="_blank" rel="noopener" style={{ color: 'inherit' }}>Shane Ruddle</a>
+          Owned by <a href="https://shaneruddle.com" target="_blank" rel="noopener" style={{ color: 'inherit' }}>Shane Ruddle</a> · <a href="https://shaneruddle.com/guides/moving-to-pattaya" target="_blank" rel="noopener" style={{ color: 'inherit' }}>Moving to Pattaya? Read Shane's guide</a>
         </p>
       </div>
     </footer>
