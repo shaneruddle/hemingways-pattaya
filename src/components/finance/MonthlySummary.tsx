@@ -763,14 +763,14 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                     );
                   }
                   const r = item.row;
-                  const m = margins(r);
                   const isMtd = r.label === mtdLabel;
+                  // No percentages for the month in progress: income isn't fully entered
+                  // yet, so margins and the comparison with last year would mislead.
+                  const m = isMtd ? { cogsPct: null, grossMarginPct: null, netMarginPct: null } : margins(r);
                   const proj = isMtd ? projectMonth(r) : null;
-                  const ly = sameMonthLastYear(r, allRowsOldest);
-                  // The month in progress is compared on its projected full-month figures,
-                  // otherwise it would always look far down on last year.
-                  const incomeChg = ly ? changePct(proj ? proj.income : r.income, ly.income) : null;
-                  const profitChg = ly ? changePct(proj ? proj.profit : r.profit, ly.profit) : null;
+                  const ly = isMtd ? null : sameMonthLastYear(r, allRowsOldest);
+                  const incomeChg = ly ? changePct(r.income, ly.income) : null;
+                  const profitChg = ly ? changePct(r.profit, ly.profit) : null;
                   const chgCls = (p: number | null) => (p === null ? 'text-gray-400' : p >= 0 ? 'text-green-600' : 'text-red-600');
                   const chgTxt = (p: number | null) => (p === null ? '—' : `${p > 0 ? '+' : ''}${p.toFixed(1)}%`);
                   return (
@@ -815,11 +815,10 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                         </>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap text-xs" title={ly ? `${ly.label}: income ${fmt(ly.income)}, profit ${fmt(ly.profit)}` : 'No figures for the same month last year'}>
+                    <td className="px-4 py-3 text-right whitespace-nowrap text-xs" title={ly ? `${ly.label}: income ${fmt(ly.income)}, profit ${fmt(ly.profit)}` : isMtd ? 'Month in progress' : 'No figures for the same month last year'}>
                       {ly ? (
                         <>
-                          {proj && <div className="text-[10px] text-gray-400">projected</div>}
-                          <div className={chgCls(incomeChg)}>Inc {chgTxt(incomeChg)}</div>
+                          <div className={chgCls(incomeChg)}>Income {chgTxt(incomeChg)}</div>
                           <div className={chgCls(profitChg)}>Profit {chgTxt(profitChg)}</div>
                         </>
                       ) : <span className="text-gray-300">—</span>}
