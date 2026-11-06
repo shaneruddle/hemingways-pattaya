@@ -78,7 +78,11 @@ export default function ReconcileModal({ row, onClose }: { row: MonthlySummaryRo
     setOpenNotes({ bank: !!last.bankNote, cash: !!last.cashNote, other: !!last.otherNote, float: !!last.floatNote });
   }, [history]);
 
-  const systemBalance = row.newBalance || 0;
+  // The rent reserve is set aside out of the balance but is still physically on hand
+  // (e.g. in the safe), so it's added back to what the count should come to.
+  const closingBalance = row.newBalance || 0;
+  const rentReserve = row.rentReserve || 0;
+  const systemBalance = round2(closingBalance + rentReserve);
   const counted = round2(num(values.bank) + num(values.cash) + num(values.other) + FLOAT_AMOUNT);
   const difference = round2(counted - systemBalance);
 
@@ -89,6 +93,7 @@ export default function ReconcileModal({ row, onClose }: { row: MonthlySummaryRo
         monthLabel: row.label,
         monthRowId: row.id,
         systemBalance: round2(systemBalance),
+        rentReserve: round2(rentReserve),
         bank: round2(num(values.bank)),
         bankNote: notes.bank.trim(),
         cash: round2(num(values.cash)),
@@ -128,8 +133,14 @@ export default function ReconcileModal({ row, onClose }: { row: MonthlySummaryRo
         </div>
 
         <div className="bg-gray-50 rounded-xl p-4 mb-5">
-          <p className="text-xs uppercase tracking-wide text-gray-400">System closing balance</p>
+          <p className="text-xs uppercase tracking-wide text-gray-400">{rentReserve ? 'Should be on hand' : 'System closing balance'}</p>
           <p className="text-2xl font-bold text-ink">{fmt(systemBalance)}</p>
+          {!!rentReserve && (
+            <div className="mt-2 space-y-0.5 text-xs text-gray-500">
+              <div className="flex justify-between"><span>Closing balance</span><span>{fmt(closingBalance)}</span></div>
+              <div className="flex justify-between"><span>+ Rent reserve</span><span>{fmt(rentReserve)}</span></div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -168,7 +179,7 @@ export default function ReconcileModal({ row, onClose }: { row: MonthlySummaryRo
 
         <div className="border-t border-gray-100 mt-5 pt-4 space-y-1 text-sm">
           <div className="flex justify-between text-gray-600"><span>Total counted</span><span className="font-medium">{fmt(counted)}</span></div>
-          <div className="flex justify-between text-gray-600"><span>System balance</span><span className="font-medium">{fmt(systemBalance)}</span></div>
+          <div className="flex justify-between text-gray-600"><span>System balance{rentReserve ? ' (incl. rent reserve)' : ''}</span><span className="font-medium">{fmt(systemBalance)}</span></div>
           <div className="flex justify-between items-baseline pt-1">
             <span className="font-bold text-ink">Difference</span>
             <span className={`text-xl font-bold ${diffColor}`}>{difference > 0 ? '+' : ''}{fmt(difference)}</span>
@@ -217,7 +228,9 @@ export default function ReconcileModal({ row, onClose }: { row: MonthlySummaryRo
                         {label}: {fmt(amount)}{note ? <span className="text-gray-400"> — {note}</span> : null}
                       </div>
                     ))}
-                    <div className="text-gray-400 mt-1">System {fmt(h.systemBalance)} · Counted {fmt(h.totalCounted)}</div>
+                    <div className="text-gray-400 mt-1">
+                      System {fmt(h.systemBalance)}{h.rentReserve ? ` (incl. rent reserve ${fmt(h.rentReserve)})` : ''} · Counted {fmt(h.totalCounted)}
+                    </div>
                   </div>
                 );
               })}

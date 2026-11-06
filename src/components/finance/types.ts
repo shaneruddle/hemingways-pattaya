@@ -145,7 +145,8 @@ export interface Reconciliation {
   id?: string;
   monthLabel: string; // e.g. "August 2026"
   monthRowId: string;
-  systemBalance: number; // the month's newBalance at the time of counting
+  systemBalance: number; // closing balance + rent reserve (what should be on hand)
+  rentReserve?: number; // rent reserve included in systemBalance (older counts: none)
   bank: number;
   bankNote: string;
   cash: number;
