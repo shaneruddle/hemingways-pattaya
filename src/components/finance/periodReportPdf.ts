@@ -57,7 +57,10 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
   const startDate = `${period.year}-${String(from + 1).padStart(2, '0')}-01`;
   const endDate = to === 11 ? `${period.year + 1}-01-01` : `${period.year}-${String(to + 2).padStart(2, '0')}-01`;
   const hasRent = rows.some(r => r.rentReserve !== undefined);
-  const breakdown = applyRentShare(await fetchCategoryBreakdownRange(startDate, endDate), hasRent ? t.rentAccrual : undefined);
+  const breakdown = applyRentShare(
+    await fetchCategoryBreakdownRange(startDate, endDate),
+    hasRent ? rows.reduce((s, r) => s + (r.rentReserve !== undefined ? r.rentExpense || 0 : 0), 0) : undefined
+  );
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -96,6 +99,7 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
     line('Income', t.income, ly?.income ?? null),
     line('COGS (Food / Drink / Ice)', t.cogsExpense, ly?.cogsExpense ?? null),
     line('Operating Expense', t.operatingExpense, ly?.operatingExpense ?? null),
+    line('Rent', t.rentExpense, ly?.rentExpense ?? null),
     line('Profit', t.profit, ly?.profit ?? null),
     line('Dividends Paid', t.dividends, ly?.dividends ?? null),
     ly ? ['COGS % of Income', pct(t.cogsExpense, t.income), pct(ly.cogsExpense, ly.income), ''] : ['COGS % of Income', pct(t.cogsExpense, t.income)],
@@ -105,7 +109,6 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
     ly ? ['Closing Balance', fmt0(t.newBalance), fmt0(ly.newBalance), ''] : ['Closing Balance', fmt0(t.newBalance)],
     ...(hasRent
       ? [
-          ['Rent Set Aside (in Operating)', fmt0(t.rentAccrual), ...(ly ? ['', ''] : [])],
           ...(t.rentPaid ? [['Rent Paid from Reserve', fmt0(t.rentPaid), ...(ly ? ['', ''] : [])]] : []),
           ['Rent Reserve (closing)', fmt0(t.rentReserve ?? 0), ...(ly ? ['', ''] : [])],
         ]
@@ -123,7 +126,7 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
     columnStyles: { 1: { halign: 'right', fontStyle: 'bold' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
     didParseCell: (data) => {
       if (data.section === 'head' && data.column.index === 0) data.cell.styles.halign = 'left';
-      if (data.section === 'body' && data.row.index === 3) {
+      if (data.section === 'body' && data.row.index === 4) {
         data.cell.styles.fontStyle = 'bold';
         if (data.column.index === 1) data.cell.styles.textColor = t.profit >= 0 ? GREEN : RED;
       }
@@ -135,6 +138,7 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
       { label: 'Income', value: t.income, color: TEAL },
       { label: 'COGS', value: -t.cogsExpense, color: RED },
       { label: 'Operating', value: -t.operatingExpense, color: '#E8A33D' },
+      { label: 'Rent', value: -t.rentExpense, color: '#9B7BC6' },
       { label: 'Profit', value: t.profit, color: GREEN },
     ]);
   }
@@ -173,18 +177,18 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
   autoTable(doc, {
     startY: 24,
     margin: { left: marginX, right: marginX },
-    head: [['Month', 'Income', 'COGS', 'Operating', 'Profit', 'COGS %', 'Net Margin', 'Dividends', 'New Balance']],
+    head: [['Month', 'Income', 'COGS', 'Operating', 'Rent', 'Profit', 'COGS %', 'Net Margin', 'Dividends', 'New Balance']],
     body: [
       ...rows.map(r => [
-        r.label + (r.label === currentMonthLabel() ? ' (MTD)' : ''), fmt0(r.income), fmt0(r.cogsExpense), fmt0(r.operatingExpense), fmt0(r.profit),
+        r.label + (r.label === currentMonthLabel() ? ' (MTD)' : ''), fmt0(r.income), fmt0(r.cogsExpense), fmt0(r.operatingExpense), fmt0(r.rentExpense || 0), fmt0(r.profit),
         pct(r.cogsExpense, r.income), pct(r.profit, r.income), fmt0(r.dividends), fmt0(r.newBalance),
       ]),
-      ['Total', fmt0(t.income), fmt0(t.cogsExpense), fmt0(t.operatingExpense), fmt0(t.profit),
+      ['Total', fmt0(t.income), fmt0(t.cogsExpense), fmt0(t.operatingExpense), fmt0(t.rentExpense), fmt0(t.profit),
         pct(t.cogsExpense, t.income), pct(t.profit, t.income), fmt0(t.dividends), fmt0(t.newBalance)],
     ],
     headStyles: { fillColor: TEAL_DARK, textColor: '#FFFFFF', fontStyle: 'bold', fontSize: 8.5 },
     styles: { font: 'helvetica', fontSize: 8.5, textColor: INK, cellPadding: 2.2 },
-    columnStyles: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map(i => [i, { halign: 'right' as const }])),
+    columnStyles: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => [i, { halign: 'right' as const }])),
     alternateRowStyles: { fillColor: LIGHT_ROW },
     didParseCell: (data) => {
       if (data.section === 'body' && data.row.index === rows.length) {

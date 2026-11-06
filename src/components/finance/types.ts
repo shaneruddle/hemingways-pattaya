@@ -126,9 +126,11 @@ export interface MonthlySummaryRow {
   dividends: number;
   profit: number; // = income - cogsExpense - operatingExpense
   newBalance: number; // = balance + profit - dividends
-  // Synced months only (August 2026 onward). operatingExpense includes rentAccrual; the
-  // March rent payment (rentPaid) comes out of rentReserve, not profit.
-  rentAccrual?: number; // this month's share of annual rent set aside
+  // Rent charged to this month, separate from operatingExpense (profit = income - COGS -
+  // operating - rent). Synced months (August 2026 onward) get 1/12 of the annual rent; for
+  // older months it's whatever was entered by hand.
+  rentExpense?: number;
+  // Synced months only. The March rent payment (rentPaid) comes out of rentReserve, not profit.
   rentPaid?: number; // rent actually paid this month (Finance → Rent Expense)
   rentReserve?: number; // running rent reserve after this month
   notes?: string; // free-text admin note for this month, not shown in partner reports

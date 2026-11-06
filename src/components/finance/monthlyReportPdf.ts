@@ -90,11 +90,11 @@ const RENT_SHARE_LABEL = 'Rent (monthly share)';
 
 // Months with a rent reserve carry a monthly rent share in operating expense, and the
 // March payment comes out of the reserve, so swap the paid amount for the share.
-export function applyRentShare(b: CategoryBreakdown, rentAccrual?: number): CategoryBreakdown {
-  if (rentAccrual === undefined) return b;
+export function applyRentShare(b: CategoryBreakdown, rentShare?: number): CategoryBreakdown {
+  if (rentShare === undefined) return b;
   const operatingByCategory = new Map(b.operatingByCategory);
   operatingByCategory.delete(RENT_PAID_LABEL);
-  if (rentAccrual > 0) operatingByCategory.set(RENT_SHARE_LABEL, (operatingByCategory.get(RENT_SHARE_LABEL) || 0) + rentAccrual);
+  if (rentShare > 0) operatingByCategory.set(RENT_SHARE_LABEL, (operatingByCategory.get(RENT_SHARE_LABEL) || 0) + rentShare);
   return { ...b, operatingByCategory };
 }
 
@@ -146,14 +146,15 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
   const parsed = parseMonthLabel(row.label);
   const breakdown: CategoryBreakdown = applyRentShare(parsed
     ? await fetchCategoryBreakdown(parsed.year, parsed.month)
-    : { hasData: false, incomeByCategory: new Map(), cogsByCategory: new Map(), operatingByCategory: new Map() }, row.rentAccrual);
+    : { hasData: false, incomeByCategory: new Map(), cogsByCategory: new Map(), operatingByCategory: new Map() }, row.rentReserve !== undefined ? row.rentExpense : undefined);
   // Previous calendar month, for the "top expense movers" page.
   const prev = parsed ? (parsed.month === 0 ? { year: parsed.year - 1, month: 11 } : { year: parsed.year, month: parsed.month - 1 }) : null;
   const prevRow = prev ? allRows.find(r => r.label === `${MONTH_NAMES[prev.month]} ${prev.year}`) : undefined;
-  const prevBreakdown = prev && breakdown.hasData ? applyRentShare(await fetchCategoryBreakdown(prev.year, prev.month), prevRow?.rentAccrual) : null;
+  const prevBreakdown = prev && breakdown.hasData ? applyRentShare(await fetchCategoryBreakdown(prev.year, prev.month), prevRow?.rentReserve !== undefined ? prevRow.rentExpense : undefined) : null;
 
   const income = row.income;
-  const expense = row.cogsExpense + row.operatingExpense;
+  const rent = row.rentExpense || 0;
+  const expense = row.cogsExpense + row.operatingExpense + rent;
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -200,6 +201,7 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
     ['Income', fmt0(income)],
     ['COGS Expense (Food / Drink / Ice)', fmt(row.cogsExpense)],
     ['Operating Expense', fmt(row.operatingExpense)],
+    ['Rent', fmt(rent)],
     ['Total Expense', fmt(expense)],
     ['Profit', fmt(row.profit)],
     ['Dividends Paid', fmt(row.dividends)],
@@ -210,7 +212,6 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
     ['Net Margin', pct(row.profit, income)],
     ...(row.rentReserve !== undefined
       ? [
-          ['Rent Set Aside (in Operating)', fmt(row.rentAccrual || 0)] as [string, string],
           ...(row.rentPaid ? [['Rent Paid from Reserve', fmt(row.rentPaid)] as [string, string]] : []),
           ['Rent Reserve', fmt(row.rentReserve)] as [string, string],
         ]
@@ -226,11 +227,11 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
     styles: { font: 'helvetica', fontSize: 10, textColor: INK, cellPadding: { top: 2.2, bottom: 2.2, left: 0, right: 4 } },
     columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
     didParseCell: (data) => {
-      if (data.row.index === 3 || data.row.index === 4 || data.row.index === 7) {
+      if (data.row.index === 4 || data.row.index === 5 || data.row.index === 8) {
         data.cell.styles.fontStyle = 'bold';
-        if (data.row.index === 3) data.cell.styles.fillColor = false as unknown as undefined;
+        if (data.row.index === 4) data.cell.styles.fillColor = false as unknown as undefined;
       }
-      if (data.row.index === 4 && data.column.index === 1) {
+      if (data.row.index === 5 && data.column.index === 1) {
         data.cell.styles.textColor = row.profit >= 0 ? GREEN : RED;
       }
     },
@@ -241,6 +242,7 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
       { label: 'Income', value: income, color: TEAL },
       { label: 'COGS', value: -row.cogsExpense, color: RED },
       { label: 'Operating', value: -row.operatingExpense, color: '#E8A33D' },
+      { label: 'Rent', value: -rent, color: '#9B7BC6' },
       { label: 'Profit', value: row.profit, color: GREEN },
     ]);
     void barBottom;
@@ -434,14 +436,14 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
   autoTable(doc, {
     startY: 29,
     margin: { left: marginX, right: marginX },
-    head: [['Month', 'Balance', 'Income', 'COGS', 'Operating', 'Profit', 'Dividends', 'New Balance']],
+    head: [['Month', 'Balance', 'Income', 'COGS', 'Operating', 'Rent', 'Profit', 'Dividends', 'New Balance']],
     body: historyRows.map(r => [
-      r.label, fmt0(r.balance), fmt0(r.income), fmt0(r.cogsExpense), fmt0(r.operatingExpense),
+      r.label, fmt0(r.balance), fmt0(r.income), fmt0(r.cogsExpense), fmt0(r.operatingExpense), fmt0(r.rentExpense || 0),
       fmt0(r.profit), fmt0(r.dividends), fmt0(r.newBalance),
     ]),
     headStyles: { fillColor: TEAL_DARK, textColor: '#FFFFFF', fontStyle: 'bold', fontSize: 8 },
     styles: { font: 'helvetica', fontSize: 7.6, textColor: INK, cellPadding: 2.2 },
-    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } },
+    columnStyles: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map(i => [i, { halign: 'right' as const }])),
     alternateRowStyles: { fillColor: LIGHT_ROW },
     didParseCell: (data) => {
       if (data.row.section === 'body' && historyRows[data.row.index]?.label === row.label) {

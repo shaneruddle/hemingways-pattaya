@@ -21,7 +21,7 @@ export function MonthlyCharts({ rows }: { rows: MonthlySummaryRow[] }) {
     return {
       name: shortLabel(r.label) + (r.label === mtd ? '*' : ''),
       Income: round2(r.income),
-      Expenses: round2(r.cogsExpense + r.operatingExpense),
+      Expenses: round2(r.cogsExpense + r.operatingExpense + (r.rentExpense || 0)),
       Profit: round2(r.profit),
       Balance: round2(r.newBalance),
       'COGS %': m.cogsPct === null ? null : round2(m.cogsPct),

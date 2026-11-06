@@ -15,7 +15,7 @@ import {
 const fmt = (n: number) => `฿${(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const num = (v: string) => (v.trim() === '' ? 0 : parseFloat(v) || 0);
 
-const emptyForm = { label: '', balance: '', income: '', cogsExpense: '', operatingExpense: '', dividends: '' };
+const emptyForm = { label: '', balance: '', income: '', cogsExpense: '', operatingExpense: '', rentExpense: '', dividends: '' };
 type FormState = typeof emptyForm;
 
 export const MONTH_NAMES = [
@@ -229,12 +229,11 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
       // This month's share of next March's rent. The first synced month also catches up
       // the earlier months of the current rent year, so the reserve is full by March.
       const k = rentYearIndex(m.month);
-      const rentAccrual = round2(rentCumulative(k + 1) - rentCumulative(i === 0 ? 0 : k));
-      rentReserve = round2(rentReserve + rentAccrual - rentPaid);
-      const operatingExpense = round2(t.operatingExpense + rentAccrual);
-      const profit = round2(t.income - t.cogsExpense - operatingExpense);
+      const rentExpense = round2(rentCumulative(k + 1) - rentCumulative(i === 0 ? 0 : k));
+      rentReserve = round2(rentReserve + rentExpense - rentPaid);
+      const profit = round2(t.income - t.cogsExpense - t.operatingExpense - rentExpense);
       const newBalance = round2(balance + profit - t.dividends);
-      const data = { label, balance: round2(balance), ...t, operatingExpense, profit, newBalance, rentAccrual, rentPaid, rentReserve };
+      const data = { label, balance: round2(balance), ...t, rentExpense, profit, newBalance, rentPaid, rentReserve };
       balance = newBalance;
       return data;
     });
@@ -258,7 +257,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
             order += 1;
             await addDoc(collection(db, 'finance_monthly_summary'), { ...data, order, autoSynced: true, createdAt: nowIso, updatedAt: nowIso, updatedBy: by });
           } else {
-            const changed = (['balance', 'income', 'cogsExpense', 'operatingExpense', 'dividends', 'profit', 'newBalance', 'rentAccrual', 'rentPaid', 'rentReserve'] as const)
+            const changed = (['balance', 'income', 'cogsExpense', 'operatingExpense', 'dividends', 'profit', 'newBalance', 'rentExpense', 'rentPaid', 'rentReserve'] as const)
               .some(k => round2((existing as any)[k] || 0) !== (data as any)[k]);
             if (changed) {
               await updateDoc(doc(db, 'finance_monthly_summary', existing.id!), { ...data, autoSynced: true, updatedAt: nowIso, updatedBy: by });
@@ -353,7 +352,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
       // invalidate any in-flight request from a previously selected eligible month.
       autoCalcRequestId.current++;
       setAutoFilled(false);
-      setForm(f => ({ ...f, label: formatMonthLabel(year, month), income: '', cogsExpense: '', operatingExpense: '', dividends: '' }));
+      setForm(f => ({ ...f, label: formatMonthLabel(year, month), income: '', cogsExpense: '', operatingExpense: '', rentExpense: '', dividends: '' }));
     }
   };
 
@@ -366,6 +365,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
       income: String(r.income ?? ''),
       cogsExpense: String(r.cogsExpense ?? ''),
       operatingExpense: String(r.operatingExpense ?? ''),
+      rentExpense: String(r.rentExpense ?? ''),
       dividends: String(r.dividends ?? ''),
     });
     setShowForm(true);
@@ -385,7 +385,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
     setEditingRow(null);
   };
 
-  const previewProfit = num(form.income) - num(form.cogsExpense) - num(form.operatingExpense);
+  const previewProfit = num(form.income) - num(form.cogsExpense) - num(form.operatingExpense) - num(form.rentExpense);
   const previewNewBalance = num(form.balance) + previewProfit - num(form.dividends);
 
   // Whether the currently-displayed label (which may have been edited) is eligible
@@ -404,8 +404,9 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
     const income = num(form.income);
     const cogsExpense = num(form.cogsExpense);
     const operatingExpense = num(form.operatingExpense);
+    const rentExpense = num(form.rentExpense);
     const dividends = num(form.dividends);
-    const profit = income - cogsExpense - operatingExpense;
+    const profit = income - cogsExpense - operatingExpense - rentExpense;
     const newBalance = balance + profit - dividends;
     const nowIso = new Date().toISOString();
 
@@ -417,6 +418,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
           income,
           cogsExpense,
           operatingExpense,
+          rentExpense,
           dividends,
           profit,
           newBalance,
@@ -433,6 +435,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
           income,
           cogsExpense,
           operatingExpense,
+          rentExpense,
           dividends,
           profit,
           newBalance,
@@ -579,7 +582,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
   };
 
   const toneCls = { good: 'text-green-600', warn: 'text-amber-600', bad: 'text-red-600', none: 'text-gray-400' } as const;
-  const colCount = readOnly ? 13 : 14;
+  const colCount = readOnly ? 14 : 15;
 
   const handleDelete = async (r: MonthlySummaryRow) => {
     if (!window.confirm(`Delete "${r.label}"? This cannot be undone.`)) return;
@@ -682,6 +685,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                   <th className="px-4 py-3 text-right">Income</th>
                   <th className="px-4 py-3 text-right">COGS Expense</th>
                   <th className="px-4 py-3 text-right">Operating Expense</th>
+                  <th className="px-4 py-3 text-right" title="Rent charged to the month. From August 2026 it's 1/12 of the 1.6M annual rent; earlier months are entered by hand.">Rent</th>
                   <th className="px-4 py-3 text-right">Profit</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap" title={`Food, drink and ice as % of income. Target ${COGS_TARGET_PCT}% or less, amber up to ${COGS_WARN_PCT}%.`}>COGS %</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap" title="Income after COGS, as % of income">Gross %</th>
@@ -709,6 +713,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                         <td className="px-4 py-2.5 text-right text-green-600">{fmt(t.income)}</td>
                         <td className="px-4 py-2.5 text-right text-red-500">{fmt(t.cogsExpense)}</td>
                         <td className="px-4 py-2.5 text-right text-red-500">{fmt(t.operatingExpense)}</td>
+                        <td className="px-4 py-2.5 text-right text-red-500">{fmt(t.rentExpense)}</td>
                         <td className={`px-4 py-2.5 text-right ${t.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(t.profit)}</td>
                         <td className={`px-4 py-2.5 text-right ${toneCls[cogsTone(m.cogsPct)]}`}>{fmtPct(m.cogsPct)}</td>
                         <td className="px-4 py-2.5 text-right text-gray-700">{fmtPct(m.grossMarginPct)}</td>
@@ -716,7 +721,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                         <td className="px-4 py-2.5 text-right text-gray-600">{fmt(t.dividends)}</td>
                         <td className="px-4 py-2.5 text-right">{fmt(t.newBalance)}</td>
                         <td className="px-4 py-2.5 text-right text-gray-600 font-medium">{t.rentReserve === null ? '' : fmt(t.rentReserve)}</td>
-                        <td className="px-4 py-2.5" colSpan={colCount - 12} />
+                        <td className="px-4 py-2.5" colSpan={colCount - 13} />
                       </tr>
                     );
                   }
@@ -748,6 +753,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                     <td className="px-4 py-3 text-right text-green-600 font-medium">{fmt(r.income)}</td>
                     <td className="px-4 py-3 text-right text-red-500">{fmt(r.cogsExpense)}</td>
                     <td className="px-4 py-3 text-right text-red-500">{fmt(r.operatingExpense)}</td>
+                    <td className="px-4 py-3 text-right text-red-500">{fmt(r.rentExpense || 0)}</td>
                     <td className={`px-4 py-3 text-right font-bold ${r.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {fmt(r.profit)}
                       {proj && (
@@ -763,7 +769,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                     <td className="px-4 py-3 text-right font-bold text-ink">{fmt(r.newBalance)}</td>
                     <td
                       className="px-4 py-3 text-right text-gray-600 whitespace-nowrap"
-                      title={r.rentReserve === undefined ? 'Before rent reserve tracking' : `Set aside ${fmt(r.rentAccrual || 0)}${r.rentPaid ? ` · paid ${fmt(r.rentPaid)}` : ''}`}
+                      title={r.rentReserve === undefined ? 'Before rent reserve tracking' : `Set aside ${fmt(r.rentExpense || 0)}${r.rentPaid ? ` · paid ${fmt(r.rentPaid)}` : ''}`}
                     >
                       {r.rentReserve === undefined ? <span className="text-gray-300">—</span> : (
                         <>
@@ -909,6 +915,16 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                   onChange={e => setForm(f => ({ ...f, operatingExpense: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1DA0A8] text-gray-900"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rent (฿)</label>
+                <input
+                  type="number"
+                  value={form.rentExpense}
+                  onChange={e => setForm(f => ({ ...f, rentExpense: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1DA0A8] text-gray-900"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">From August 2026 this is set automatically (1/12 of the annual rent).</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Dividends (฿)</label>
