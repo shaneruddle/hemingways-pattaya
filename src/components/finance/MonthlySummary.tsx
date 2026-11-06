@@ -3,9 +3,14 @@ import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, d
 import { db, auth } from '../../firebase';
 import { logActivity } from '../../utils/logger';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, X, RefreshCw, Download, StickyNote, Scale } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, X, RefreshCw, Download, StickyNote, Scale, FileSpreadsheet, FileText } from 'lucide-react';
 import ReconcileModal from './ReconcileModal';
 import { MonthlySummaryRow } from './types';
+import { MonthlyCharts, DividendSplit } from './MonthlySummaryInsights';
+import {
+  margins, cogsTone, fmtPct, currentMonthLabel, projectMonth, totalsOf, yearOf, yearsIn,
+  sameMonthLastYear, changePct, exportSummaryCsv, exportDividendsCsv, pattayaNow, COGS_TARGET_PCT, COGS_WARN_PCT,
+} from './monthlySummaryAnalytics';
 
 const fmt = (n: number) => `฿${(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const num = (v: string) => (v.trim() === '' ? 0 : parseFloat(v) || 0);
@@ -472,6 +477,69 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
     }
   };
 
+  // ---- Views, year filter, exports, period reports ----------------------------
+  const [view, setView] = useState<'table' | 'charts' | 'dividends'>('table');
+  const [yearFilter, setYearFilter] = useState<'all' | number>('all');
+  const [showPeriod, setShowPeriod] = useState(false);
+  const [periodYear, setPeriodYear] = useState<number>(pattayaNow().year);
+  const [periodQuarter, setPeriodQuarter] = useState<number | null>(Math.floor(pattayaNow().month / 3) + 1);
+  const [generatingPeriod, setGeneratingPeriod] = useState(false);
+  const mtdLabel = currentMonthLabel();
+
+  // Oldest-first, using the same figures that are displayed (live for partners).
+  const allRowsOldest = useMemo(() => (displayRows ? [...displayRows].reverse() : []), [displayRows]);
+  const years = useMemo(() => yearsIn(allRowsOldest), [allRowsOldest]);
+  const filteredOldest = useMemo(
+    () => (yearFilter === 'all' ? allRowsOldest : allRowsOldest.filter(r => yearOf(r) === yearFilter)),
+    [allRowsOldest, yearFilter]
+  );
+  // Month rows only (excludes opening-balance rows like "Balance from old Accounts").
+  const monthRowsOldest = useMemo(() => filteredOldest.filter(r => yearOf(r) !== null), [filteredOldest]);
+
+  // Table items, newest-first, with a subtotal row heading each year.
+  const tableItems = useMemo(() => {
+    const items: ({ kind: 'row'; row: MonthlySummaryRow } | { kind: 'year'; year: number })[] = [];
+    let lastYear: number | null = null;
+    [...filteredOldest].reverse().forEach(r => {
+      const y = yearOf(r);
+      if (y !== null && y !== lastYear) items.push({ kind: 'year', year: y });
+      if (y !== null) lastYear = y;
+      items.push({ kind: 'row', row: r });
+    });
+    return items;
+  }, [filteredOldest]);
+  const yearTotals = useMemo(() => {
+    const m = new Map<number, ReturnType<typeof totalsOf>>();
+    years.forEach(y => m.set(y, totalsOf(allRowsOldest.filter(r => yearOf(r) === y))));
+    return m;
+  }, [years, allRowsOldest]);
+
+  const handleExport = () => {
+    const suffix = yearFilter === 'all' ? 'All' : String(yearFilter);
+    if (view === 'dividends') exportDividendsCsv(monthRowsOldest, `Hemingways_Pattaya_Dividends_${suffix}.csv`);
+    else exportSummaryCsv(filteredOldest, `Hemingways_Pattaya_Monthly_Summary_${suffix}.csv`);
+    logActivity('Monthly Summary Exported', `${view === 'dividends' ? 'Dividends' : 'Summary'} · ${suffix}`, 'finance');
+  };
+
+  const handleGeneratePeriod = async () => {
+    setGeneratingPeriod(true);
+    try {
+      const { generatePeriodReportPdf, periodLabel } = await import('./periodReportPdf');
+      const period = { year: periodYear, quarter: periodQuarter };
+      await generatePeriodReportPdf(period, allRowsOldest);
+      await logActivity('Period Report Generated', periodLabel(period), 'finance');
+      setShowPeriod(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error && err.message.startsWith('No months') ? err.message : 'Failed to generate report');
+    } finally {
+      setGeneratingPeriod(false);
+    }
+  };
+
+  const toneCls = { good: 'text-green-600', warn: 'text-amber-600', bad: 'text-red-600', none: 'text-gray-400' } as const;
+  const colCount = readOnly ? 12 : 13;
+
   const handleDelete = async (r: MonthlySummaryRow) => {
     if (!window.confirm(`Delete "${r.label}"? This cannot be undone.`)) return;
     setDeletingId(r.id);
@@ -498,14 +566,53 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
               : 'Private · August 2026 onward updates automatically from Finance · running balance, income, expenses, profit & dividends by month'}
           </p>
         </div>
-        {!readOnly && (
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
-            onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1DA0A8] text-white rounded-xl text-sm font-bold hover:bg-[#18919a] transition-all"
+            onClick={() => setShowPeriod(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-all"
+            title="Quarterly or annual P&L report (PDF)"
           >
-            <Plus size={16} /> Add Month
+            <FileText size={16} /> Period Report
           </button>
-        )}
+          <button
+            onClick={handleExport}
+            disabled={!rows || rows.length === 0}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
+            title={view === 'dividends' ? 'Export dividend split (CSV, opens in Excel)' : 'Export summary (CSV, opens in Excel)'}
+          >
+            <FileSpreadsheet size={16} /> Export
+          </button>
+          {!readOnly && (
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1DA0A8] text-white rounded-xl text-sm font-bold hover:bg-[#18919a] transition-all"
+            >
+              <Plus size={16} /> Add Month
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex bg-white border border-gray-200 rounded-xl p-1">
+          {([['table', 'Table'], ['charts', 'Charts'], ['dividends', 'Dividends']] as const).map(([v, name]) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === v ? 'bg-[#1DA0A8] text-white' : 'text-gray-600 hover:text-ink'}`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <select
+          value={yearFilter}
+          onChange={e => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          className="border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#1DA0A8]"
+        >
+          <option value="all">All years</option>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
       </div>
 
       {loading && (
@@ -520,6 +627,10 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
           <p className="text-gray-400 text-sm italic text-center py-10 bg-white rounded-2xl border border-gray-100">
             No months logged yet
           </p>
+        ) : view === 'charts' ? (
+          <MonthlyCharts rows={monthRowsOldest} />
+        ) : view === 'dividends' ? (
+          <DividendSplit rows={monthRowsOldest} />
         ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-auto max-h-[calc(100vh-10rem)]">
             <table className="w-full text-sm">
@@ -531,22 +642,91 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                   <th className="px-4 py-3 text-right">COGS Expense</th>
                   <th className="px-4 py-3 text-right">Operating Expense</th>
                   <th className="px-4 py-3 text-right">Profit</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" title={`Food, drink and ice as % of income. Target ${COGS_TARGET_PCT}% or less, amber up to ${COGS_WARN_PCT}%.`}>COGS %</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Income after COGS, as % of income">Gross %</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Profit as % of income">Net %</th>
                   <th className="px-4 py-3 text-right">Dividends</th>
                   <th className="px-4 py-3 text-right">New Balance</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Income and profit vs the same month last year">vs Last Year</th>
                   {!readOnly && <th className="px-4 py-3 text-center">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {(displayRows || []).map(r => (
-                  <tr key={r.id} className="border-b border-gray-50 last:border-0">
-                    <td className="px-4 py-3 font-medium text-ink whitespace-nowrap sticky left-0 z-10 bg-white">{r.label}</td>
+                {tableItems.map(item => {
+                  if (item.kind === 'year') {
+                    const t = yearTotals.get(item.year)!;
+                    const m = margins(t);
+                    const isCurrentYear = item.year === pattayaNow().year;
+                    return (
+                      <tr key={`year-${item.year}`} className="border-b border-gray-100 bg-cream font-bold text-ink">
+                        <td className="px-4 py-2.5 whitespace-nowrap sticky left-0 z-10 bg-cream">
+                          {item.year} {isCurrentYear ? 'YTD' : 'total'}
+                          <span className="ml-1.5 text-[11px] font-normal text-gray-500">{t.months} mo</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-gray-600 font-medium">{fmt(t.balance)}</td>
+                        <td className="px-4 py-2.5 text-right text-green-600">{fmt(t.income)}</td>
+                        <td className="px-4 py-2.5 text-right text-red-500">{fmt(t.cogsExpense)}</td>
+                        <td className="px-4 py-2.5 text-right text-red-500">{fmt(t.operatingExpense)}</td>
+                        <td className={`px-4 py-2.5 text-right ${t.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(t.profit)}</td>
+                        <td className={`px-4 py-2.5 text-right ${toneCls[cogsTone(m.cogsPct)]}`}>{fmtPct(m.cogsPct)}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-700">{fmtPct(m.grossMarginPct)}</td>
+                        <td className={`px-4 py-2.5 text-right ${(m.netMarginPct ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtPct(m.netMarginPct)}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">{fmt(t.dividends)}</td>
+                        <td className="px-4 py-2.5 text-right">{fmt(t.newBalance)}</td>
+                        <td className="px-4 py-2.5" colSpan={colCount - 11} />
+                      </tr>
+                    );
+                  }
+                  const r = item.row;
+                  const m = margins(r);
+                  const isMtd = r.label === mtdLabel;
+                  const proj = isMtd ? projectMonth(r) : null;
+                  const ly = sameMonthLastYear(r, allRowsOldest);
+                  // The month in progress is compared on its projected full-month figures,
+                  // otherwise it would always look far down on last year.
+                  const incomeChg = ly ? changePct(proj ? proj.income : r.income, ly.income) : null;
+                  const profitChg = ly ? changePct(proj ? proj.profit : r.profit, ly.profit) : null;
+                  const chgCls = (p: number | null) => (p === null ? 'text-gray-400' : p >= 0 ? 'text-green-600' : 'text-red-600');
+                  const chgTxt = (p: number | null) => (p === null ? '—' : `${p > 0 ? '+' : ''}${p.toFixed(1)}%`);
+                  return (
+                  <tr key={r.id} className={`border-b border-gray-50 last:border-0 ${isMtd ? 'bg-amber-50/40' : ''}`}>
+                    <td className={`px-4 py-3 font-medium text-ink whitespace-nowrap sticky left-0 z-10 ${isMtd ? 'bg-amber-50' : 'bg-white'}`}>
+                      {r.label}
+                      {isMtd && (
+                        <span
+                          className="ml-2 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 rounded px-1.5 py-0.5"
+                          title={`Month in progress: day ${proj!.daysElapsed} of ${proj!.daysInMonth}`}
+                        >
+                          MTD
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right text-gray-600">{fmt(r.balance)}</td>
                     <td className="px-4 py-3 text-right text-green-600 font-medium">{fmt(r.income)}</td>
                     <td className="px-4 py-3 text-right text-red-500">{fmt(r.cogsExpense)}</td>
                     <td className="px-4 py-3 text-right text-red-500">{fmt(r.operatingExpense)}</td>
-                    <td className={`px-4 py-3 text-right font-bold ${r.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(r.profit)}</td>
+                    <td className={`px-4 py-3 text-right font-bold ${r.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {fmt(r.profit)}
+                      {proj && (
+                        <div className="text-[11px] font-normal text-gray-500 whitespace-nowrap" title={`Projected full month from ${proj.daysElapsed} of ${proj.daysInMonth} days: income ${fmt(proj.income)}`}>
+                          projected {fmt(proj.profit)}
+                        </div>
+                      )}
+                    </td>
+                    <td className={`px-4 py-3 text-right font-medium ${toneCls[cogsTone(m.cogsPct)]}`}>{fmtPct(m.cogsPct)}</td>
+                    <td className="px-4 py-3 text-right text-gray-700">{fmtPct(m.grossMarginPct)}</td>
+                    <td className={`px-4 py-3 text-right ${m.netMarginPct === null ? 'text-gray-400' : m.netMarginPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtPct(m.netMarginPct)}</td>
                     <td className="px-4 py-3 text-right text-gray-600">{fmt(r.dividends)}</td>
                     <td className="px-4 py-3 text-right font-bold text-ink">{fmt(r.newBalance)}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap text-xs" title={ly ? `${ly.label}: income ${fmt(ly.income)}, profit ${fmt(ly.profit)}` : 'No figures for the same month last year'}>
+                      {ly ? (
+                        <>
+                          {proj && <div className="text-[10px] text-gray-400">projected</div>}
+                          <div className={chgCls(incomeChg)}>Inc {chgTxt(incomeChg)}</div>
+                          <div className={chgCls(profitChg)}>Profit {chgTxt(profitChg)}</div>
+                        </>
+                      ) : <span className="text-gray-300">—</span>}
+                    </td>
                     {!readOnly && (
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-3">
@@ -583,7 +763,8 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                     </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -712,6 +893,64 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
       )}
 
       {reconRow && <ReconcileModal row={reconRow} onClose={() => setReconRow(null)} />}
+
+      {showPeriod && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowPeriod(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-ink">Period Report</h3>
+              <button onClick={() => setShowPeriod(false)} className="text-gray-400 hover:text-gray-600" aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">P&L for a quarter or full year, with month-by-month figures, margins, the same period last year and each partner's dividend share.</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                <select
+                  value={periodYear}
+                  onChange={e => setPeriodYear(Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1DA0A8] text-gray-900 bg-white"
+                >
+                  {(years.length ? years : [pattayaNow().year]).map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Period</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {[1, 2, 3, 4].map(q => (
+                    <button
+                      key={q}
+                      onClick={() => setPeriodQuarter(q)}
+                      className={`py-2 rounded-xl text-sm font-medium border ${periodQuarter === q ? 'bg-[#1DA0A8] text-white border-[#1DA0A8]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Q{q}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPeriodQuarter(null)}
+                    className={`py-2 rounded-xl text-sm font-medium border ${periodQuarter === null ? 'bg-[#1DA0A8] text-white border-[#1DA0A8]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    Year
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowPeriod(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleGeneratePeriod}
+                disabled={generatingPeriod}
+                className="flex-1 py-2.5 bg-[#1DA0A8] text-white rounded-xl font-bold hover:bg-[#18919a] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {generatingPeriod ? (<><Loader2 size={16} className="animate-spin" /> Generating...</>) : (<><Download size={16} /> Download PDF</>)}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {noteRow && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={closeNote}>
