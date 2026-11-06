@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, X, RefreshCw, Download, StickyNote, Scale, FileSpreadsheet, FileText } from 'lucide-react';
 import ReconcileModal from './ReconcileModal';
 import MonthSpotlight, { focusableMonths } from './MonthSpotlight';
+import YearCompare from './YearCompare';
 import { MonthlySummaryRow } from './types';
 import { MonthlyCharts, DividendSplit } from './MonthlySummaryInsights';
 import {
@@ -551,7 +552,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
   };
 
   // ---- Views, year filter, exports, period reports ----------------------------
-  const [view, setView] = useState<'table' | 'charts' | 'dividends'>('table');
+  const [view, setView] = useState<'table' | 'charts' | 'compare' | 'dividends'>('table');
   const [focusLabel, setFocusLabel] = useState<string | null>(null);
   const spotlightRef = useRef<HTMLDivElement>(null);
   const [yearFilter, setYearFilter] = useState<'all' | number>('all');
@@ -694,7 +695,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="inline-flex bg-white border border-gray-200 rounded-xl p-1">
-          {([['table', 'Table'], ['charts', 'Charts'], ['dividends', 'Dividends']] as const).map(([v, name]) => (
+          {([['table', 'Table'], ['charts', 'Charts'], ['compare', 'Compare'], ['dividends', 'Dividends']] as const).map(([v, name]) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -704,14 +705,14 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
             </button>
           ))}
         </div>
-        <select
+        {view !== 'compare' && <select
           value={yearFilter}
           onChange={e => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
           className="border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#1DA0A8]"
         >
           <option value="all">All years</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
+        </select>}
       </div>
 
       {loading && (
@@ -728,6 +729,8 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
           </p>
         ) : view === 'charts' ? (
           <MonthlyCharts rows={monthRowsOldest} />
+        ) : view === 'compare' ? (
+          <YearCompare rows={allRowsOldest} />
         ) : view === 'dividends' ? (
           <DividendSplit rows={monthRowsOldest} />
         ) : (
