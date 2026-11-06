@@ -5,6 +5,7 @@ import { logActivity } from '../../utils/logger';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, X, RefreshCw, Download, StickyNote, Scale, FileSpreadsheet, FileText } from 'lucide-react';
 import ReconcileModal from './ReconcileModal';
+import MonthSpotlight, { focusableMonths } from './MonthSpotlight';
 import { MonthlySummaryRow } from './types';
 import { MonthlyCharts, DividendSplit } from './MonthlySummaryInsights';
 import {
@@ -551,6 +552,8 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
 
   // ---- Views, year filter, exports, period reports ----------------------------
   const [view, setView] = useState<'table' | 'charts' | 'dividends'>('table');
+  const [focusLabel, setFocusLabel] = useState<string | null>(null);
+  const spotlightRef = useRef<HTMLDivElement>(null);
   const [yearFilter, setYearFilter] = useState<'all' | number>('all');
   const [showPeriod, setShowPeriod] = useState(false);
   const [periodYear, setPeriodYear] = useState<number>(pattayaNow().year);
@@ -683,6 +686,12 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
         </div>
       </div>
 
+      {!loading && !error && allRowsOldest.length > 0 && (
+        <div ref={spotlightRef}>
+          <MonthSpotlight rows={allRowsOldest} focusLabel={focusLabel} onFocus={setFocusLabel} />
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="inline-flex bg-white border border-gray-200 rounded-xl p-1">
           {([['table', 'Table'], ['charts', 'Charts'], ['dividends', 'Dividends']] as const).map(([v, name]) => (
@@ -785,7 +794,15 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                   return (
                   <tr key={r.id} className={`border-b border-gray-50 last:border-0 ${isMtd ? 'bg-amber-50/40' : ''}`}>
                     <td className={`px-4 py-3 font-medium text-ink whitespace-nowrap sticky left-0 z-10 ${isMtd ? 'bg-amber-50' : 'bg-white'}`}>
-                      {r.label}
+                      {focusableMonths([r]).length ? (
+                        <button
+                          onClick={() => { setFocusLabel(r.label); spotlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+                          className={`hover:text-[#1DA0A8] hover:underline underline-offset-4 ${focusLabel === r.label ? 'text-[#1DA0A8]' : ''}`}
+                          title="Show this month in focus"
+                        >
+                          {r.label}
+                        </button>
+                      ) : r.label}
                       {isMtd && (
                         <span
                           className="ml-2 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 rounded px-1.5 py-0.5"
