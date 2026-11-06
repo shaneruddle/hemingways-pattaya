@@ -15,6 +15,7 @@ import {
 } from './monthlySummaryAnalytics';
 
 const fmt = (n: number) => `฿${(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmt0 = (n: number) => `฿${Math.round(n || 0).toLocaleString('en-US')}`;
 const num = (v: string) => (v.trim() === '' ? 0 : parseFloat(v) || 0);
 
 const emptyForm = { label: '', balance: '', income: '', cogsExpense: '', operatingExpense: '', rentExpense: '', dividends: '' };
@@ -587,6 +588,14 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
     });
     return items;
   }, [filteredOldest]);
+  // Scale for the in-cell bars: the biggest month in view fills the cell.
+  const barScale = useMemo(() => {
+    const ms = tableItems.filter(i => i.kind === 'row').map(i => (i as { row: MonthlySummaryRow }).row).filter(r => r.label !== currentMonthLabel());
+    return {
+      income: Math.max(1, ...ms.map(r => r.income || 0)),
+      profit: Math.max(1, ...ms.map(r => Math.abs(r.profit || 0))),
+    };
+  }, [tableItems]);
   const yearTotals = useMemo(() => {
     const m = new Map<number, ReturnType<typeof totalsOf>>();
     years.forEach(y => m.set(y, totalsOf(allRowsOldest.filter(r => yearOf(r) === y))));
@@ -735,24 +744,33 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
           <DividendSplit rows={monthRowsOldest} />
         ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-auto max-h-[calc(100vh-10rem)]">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase tracking-wide sticky top-0 z-20 bg-white">
-                  <th className="px-4 py-3 sticky left-0 z-30 bg-white">Month</th>
-                  <th className="px-4 py-3 text-right">Balance</th>
-                  <th className="px-4 py-3 text-right">Income</th>
-                  <th className="px-4 py-3 text-right">COGS Expense</th>
-                  <th className="px-4 py-3 text-right">Operating Expense</th>
-                  <th className="px-4 py-3 text-right" title="Rent charged to the month: 1/12 of the rent for that April–March year.">Rent</th>
-                  <th className="px-4 py-3 text-right">Profit</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap" title={`Food, drink and ice as % of income. Target ${COGS_TARGET_PCT}% or less, amber up to ${COGS_WARN_PCT}%.`}>COGS %</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Income after COGS, as % of income">Gross %</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Profit as % of income">Net %</th>
-                  <th className="px-4 py-3 text-right">Dividends</th>
-                  <th className="px-4 py-3 text-right">New Balance</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Rent already paid that covers future months. Goes up when rent is paid and down by each month's share.">Prepaid Rent</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Income and profit vs the same month last year">vs Last Year</th>
-                  {!readOnly && <th className="px-4 py-3 text-center">Actions</th>}
+            <table className="w-full text-sm tabular-nums">
+              <thead className="sticky top-0 z-20 bg-white">
+                <tr className="text-[10px] font-bold uppercase tracking-[0.14em]">
+                  <th className="sticky left-0 z-30 bg-white" />
+                  <th className="px-4 pt-3 pb-1 text-right text-gray-400">Start</th>
+                  <th className="px-4 pt-3 pb-1 text-left text-[#16868D] border-l border-gray-100">Money in</th>
+                  <th colSpan={3} className="px-4 pt-3 pb-1 text-left text-[#B97D15] border-l border-gray-100">Costs</th>
+                  <th colSpan={4} className="px-4 pt-3 pb-1 text-left text-ink border-l border-gray-100">Result</th>
+                  <th colSpan={3} className="px-4 pt-3 pb-1 text-left text-gray-500 border-l border-gray-100">Cash</th>
+                  <th colSpan={readOnly ? 1 : 2} className="px-4 pt-3 pb-1 border-l border-gray-100" />
+                </tr>
+                <tr className="border-b-2 border-gray-100 text-left text-[11px] text-gray-500 uppercase tracking-wide">
+                  <th className="px-4 pb-3 sticky left-0 z-30 bg-white">Month</th>
+                  <th className="px-4 pb-3 text-right">Balance</th>
+                  <th className="px-4 pb-3 text-left border-l border-gray-100 min-w-[170px]">Income</th>
+                  <th className="px-4 pb-3 text-right border-l border-gray-100">COGS</th>
+                  <th className="px-4 pb-3 text-right">Operating</th>
+                  <th className="px-4 pb-3 text-right" title="Rent charged to the month: 1/12 of the rent for that April–March year.">Rent</th>
+                  <th className="px-4 pb-3 text-left border-l border-gray-100 min-w-[190px]">Profit</th>
+                  <th className="px-4 pb-3 text-center whitespace-nowrap" title={`Food, drink and ice as % of income. Target ${COGS_TARGET_PCT}% or less, amber up to ${COGS_WARN_PCT}%.`}>COGS %</th>
+                  <th className="px-4 pb-3 text-center whitespace-nowrap" title="Income after COGS, as % of income">Gross %</th>
+                  <th className="px-4 pb-3 text-center whitespace-nowrap" title="Profit as % of income">Net %</th>
+                  <th className="px-4 pb-3 text-right border-l border-gray-100">Dividends</th>
+                  <th className="px-4 pb-3 text-right">New Balance</th>
+                  <th className="px-4 pb-3 text-right whitespace-nowrap" title="Rent already paid that covers future months. Goes up when rent is paid and down by each month's share.">Prepaid Rent</th>
+                  <th className="px-4 pb-3 text-left whitespace-nowrap border-l border-gray-100" title="Income and profit vs the same month last year">vs Last Year</th>
+                  {!readOnly && <th className="px-4 pb-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -762,24 +780,25 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                     const m = margins(t);
                     const isCurrentYear = item.year === pattayaNow().year;
                     return (
-                      <tr key={`year-${item.year}`} className="border-b border-gray-100 bg-cream font-bold text-ink">
-                        <td className="px-4 py-2.5 whitespace-nowrap sticky left-0 z-10 bg-cream">
-                          {item.year} {isCurrentYear ? 'YTD' : 'total'}
-                          <span className="ml-1.5 text-[11px] font-normal text-gray-500">{t.months} mo</span>
+                      <tr key={`year-${item.year}`} className="bg-[#141414] text-[#F6F1E6]">
+                        <td className="px-4 py-3 whitespace-nowrap sticky left-0 z-10 bg-[#141414]">
+                          <span className="font-['Anton'] text-xl tracking-wide">{item.year}</span>
+                          <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#E3B860]">{isCurrentYear ? 'Year to date' : 'Full year'}</span>
+                          <span className="ml-1.5 text-[11px] text-white/40">{t.months} mo</span>
                         </td>
-                        <td className="px-4 py-2.5 text-right text-gray-600 font-medium">{fmt(t.balance)}</td>
-                        <td className="px-4 py-2.5 text-right text-green-600">{fmt(t.income)}</td>
-                        <td className="px-4 py-2.5 text-right text-red-500">{fmt(t.cogsExpense)}</td>
-                        <td className="px-4 py-2.5 text-right text-red-500">{fmt(t.operatingExpense)}</td>
-                        <td className="px-4 py-2.5 text-right text-red-500">{fmt(t.rentExpense)}</td>
-                        <td className={`px-4 py-2.5 text-right ${t.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(t.profit)}</td>
-                        <td className={`px-4 py-2.5 text-right ${toneCls[cogsTone(m.cogsPct)]}`}>{fmtPct(m.cogsPct)}</td>
-                        <td className="px-4 py-2.5 text-right text-gray-700">{fmtPct(m.grossMarginPct)}</td>
-                        <td className={`px-4 py-2.5 text-right ${(m.netMarginPct ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtPct(m.netMarginPct)}</td>
-                        <td className="px-4 py-2.5 text-right text-gray-600">{fmt(t.dividends)}</td>
-                        <td className="px-4 py-2.5 text-right">{fmt(t.newBalance)}</td>
-                        <td className="px-4 py-2.5 text-right text-gray-600 font-medium">{t.rentReserve === null ? '' : fmt(t.rentReserve)}</td>
-                        <td className="px-4 py-2.5" colSpan={colCount - 13} />
+                        <td className="px-4 py-3 text-right text-white/50">{fmt0(t.balance)}</td>
+                        <td className="px-4 py-3 font-semibold border-l border-white/10">{fmt0(t.income)}</td>
+                        <td className="px-4 py-3 text-right text-white/70 border-l border-white/10">{fmt0(t.cogsExpense)}</td>
+                        <td className="px-4 py-3 text-right text-white/70">{fmt0(t.operatingExpense)}</td>
+                        <td className="px-4 py-3 text-right text-white/70">{fmt0(t.rentExpense)}</td>
+                        <td className={`px-4 py-3 font-bold border-l border-white/10 ${t.profit >= 0 ? 'text-[#5CC6CD]' : 'text-[#F0463D]'}`}>{fmt0(t.profit)}</td>
+                        <td className="px-4 py-3 text-center text-white/80">{fmtPct(m.cogsPct)}</td>
+                        <td className="px-4 py-3 text-center text-white/80">{fmtPct(m.grossMarginPct)}</td>
+                        <td className="px-4 py-3 text-center font-bold text-[#E3B860]">{fmtPct(m.netMarginPct)}</td>
+                        <td className="px-4 py-3 text-right text-white/70 border-l border-white/10">{fmt0(t.dividends)}</td>
+                        <td className="px-4 py-3 text-right font-semibold">{fmt0(t.newBalance)}</td>
+                        <td className="px-4 py-3 text-right text-white/50">{t.rentReserve === null ? '' : fmt0(t.rentReserve)}</td>
+                        <td className="px-4 py-3 border-l border-white/10" colSpan={colCount - 13} />
                       </tr>
                     );
                   }
@@ -792,11 +811,23 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                   const ly = isMtd ? null : sameMonthLastYear(r, allRowsOldest);
                   const incomeChg = ly ? changePct(r.income, ly.income) : null;
                   const profitChg = ly ? changePct(r.profit, ly.profit) : null;
-                  const chgCls = (p: number | null) => (p === null ? 'text-gray-400' : p >= 0 ? 'text-green-600' : 'text-red-600');
-                  const chgTxt = (p: number | null) => (p === null ? '—' : `${p > 0 ? '+' : ''}${p.toFixed(1)}%`);
+                  const pill = (label: string, p: number | null) => (
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${p === null ? 'bg-gray-50 text-gray-400' : p >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                      {p === null ? '' : p >= 0 ? '▲' : '▼'} {label} {p === null ? '—' : `${Math.abs(p).toFixed(1)}%`}
+                    </span>
+                  );
+                  // Net margin chip: greener the healthier, red when a loss.
+                  const net = m.netMarginPct;
+                  const netStyle = net === null ? undefined : net < 0
+                    ? { background: '#FDE2E0', color: '#B4231B' }
+                    : { background: `rgba(29,160,168,${Math.min(0.12 + net / 35, 0.9)})`, color: net > 18 ? '#fff' : '#0F6A70' };
+                  const cogsT = cogsTone(m.cogsPct);
+                  const cogsStyle = { good: 'bg-green-50 text-green-700', warn: 'bg-amber-50 text-amber-700', bad: 'bg-red-50 text-red-600', none: 'text-gray-300' }[cogsT];
+                  const incW = Math.max(0, (r.income || 0) / barScale.income) * 100;
+                  const profW = Math.min(100, (Math.abs(r.profit || 0) / barScale.profit) * 100);
                   return (
-                  <tr key={r.id} className={`border-b border-gray-50 last:border-0 ${isMtd ? 'bg-amber-50/40' : ''}`}>
-                    <td className={`px-4 py-3 font-medium text-ink whitespace-nowrap sticky left-0 z-10 ${isMtd ? 'bg-amber-50' : 'bg-white'}`}>
+                  <tr key={r.id} className={`group border-b border-gray-50 last:border-0 hover:bg-[#F4EFE4]/60 transition-colors ${isMtd ? 'bg-amber-50/40' : ''}`}>
+                    <td className={`px-4 py-3 font-medium text-ink whitespace-nowrap sticky left-0 z-10 group-hover:bg-[#F8F5EE] ${isMtd ? 'bg-amber-50' : 'bg-white'}`}>
                       {focusableMonths([r]).length ? (
                         <button
                           onClick={() => { setFocusLabel(r.label); spotlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
@@ -815,46 +846,60 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-600">{fmt(r.balance)}</td>
-                    <td className="px-4 py-3 text-right text-green-600 font-medium">{fmt(r.income)}</td>
-                    <td className="px-4 py-3 text-right text-red-500">{fmt(r.cogsExpense)}</td>
-                    <td className="px-4 py-3 text-right text-red-500">{fmt(r.operatingExpense)}</td>
-                    <td className="px-4 py-3 text-right text-red-500">{fmt(r.rentExpense || 0)}</td>
-                    <td className={`px-4 py-3 text-right font-bold ${r.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {fmt(r.profit)}
+                    <td className="px-4 py-3 text-right text-gray-400" title={fmt(r.balance)}>{fmt0(r.balance)}</td>
+                    <td className="px-4 py-3 border-l border-gray-50" title={fmt(r.income)}>
+                      <div className="font-semibold text-ink">{fmt0(r.income)}</div>
+                      {!isMtd && <div className="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-full rounded-full bg-[#1DA0A8]" style={{ width: `${incW}%` }} />
+                      </div>}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-600 border-l border-gray-50" title={fmt(r.cogsExpense)}>{fmt0(r.cogsExpense)}</td>
+                    <td className="px-4 py-3 text-right text-gray-600" title={fmt(r.operatingExpense)}>{fmt0(r.operatingExpense)}</td>
+                    <td className="px-4 py-3 text-right text-gray-400" title={fmt(r.rentExpense || 0)}>{fmt0(r.rentExpense || 0)}</td>
+                    <td className="px-4 py-3 border-l border-gray-50" title={fmt(r.profit)}>
+                      <div className={`font-bold ${r.profit >= 0 ? 'text-ink' : 'text-red-600'}`}>{fmt0(r.profit)}</div>
+                      {!isMtd && <div className="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div className={`h-full rounded-full ${r.profit >= 0 ? 'bg-[#0F6A70]' : 'bg-red-500'}`} style={{ width: `${profW}%` }} />
+                      </div>}
                       {proj && (
-                        <div className="text-[11px] font-normal text-gray-500 whitespace-nowrap" title={`Projected full month from ${proj.daysElapsed} of ${proj.daysInMonth} days: income ${fmt(proj.income)}`}>
-                          projected {fmt(proj.profit)}
+                        <div className="text-[11px] font-normal text-gray-500 whitespace-nowrap mt-0.5" title={`Projected full month from ${proj.daysElapsed} of ${proj.daysInMonth} days: income ${fmt(proj.income)}`}>
+                          projected {fmt0(proj.profit)}
                         </div>
                       )}
                     </td>
-                    <td className={`px-4 py-3 text-right font-medium ${toneCls[cogsTone(m.cogsPct)]}`}>{fmtPct(m.cogsPct)}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{fmtPct(m.grossMarginPct)}</td>
-                    <td className={`px-4 py-3 text-right ${m.netMarginPct === null ? 'text-gray-400' : m.netMarginPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtPct(m.netMarginPct)}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">{fmt(r.dividends)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-ink">{fmt(r.newBalance)}</td>
+                    <td className="px-3 py-3 text-center">
+                      {m.cogsPct === null ? <span className="text-gray-300">—</span> : <span className={`inline-block min-w-[58px] rounded-lg px-2 py-1 text-xs font-semibold ${cogsStyle}`}>{fmtPct(m.cogsPct)}</span>}
+                    </td>
+                    <td className="px-3 py-3 text-center text-gray-500 text-xs">{fmtPct(m.grossMarginPct)}</td>
+                    <td className="px-3 py-3 text-center">
+                      {net === null ? <span className="text-gray-300">—</span> : <span className="inline-block min-w-[58px] rounded-lg px-2 py-1 text-xs font-bold" style={netStyle}>{fmtPct(net)}</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right border-l border-gray-50" title={fmt(r.dividends)}>
+                      {r.dividends ? <span className="font-semibold text-[#B97D15]">{fmt0(r.dividends)}</span> : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-ink" title={fmt(r.newBalance)}>{fmt0(r.newBalance)}</td>
                     <td
-                      className="px-4 py-3 text-right text-gray-600 whitespace-nowrap"
+                      className="px-4 py-3 text-right text-gray-500 whitespace-nowrap"
                       title={r.rentReserve === undefined ? '' : `Used ${fmt(r.rentExpense || 0)}${r.rentPaid ? ` · paid ${fmt(r.rentPaid)}` : ''}`}
                     >
                       {r.rentReserve === undefined ? <span className="text-gray-300">—</span> : (
                         <>
-                          {fmt(r.rentReserve)}
-                          {!!r.rentPaid && <div className="text-[11px] text-amber-600">paid {fmt(r.rentPaid)}</div>}
+                          {fmt0(r.rentReserve)}
+                          {!!r.rentPaid && <div className="text-[11px] text-amber-600">paid {fmt0(r.rentPaid)}</div>}
                         </>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap text-xs" title={ly ? `${ly.label}: income ${fmt(ly.income)}, profit ${fmt(ly.profit)}` : isMtd ? 'Month in progress' : 'No figures for the same month last year'}>
+                    <td className="px-4 py-3 whitespace-nowrap border-l border-gray-50" title={ly ? `${ly.label}: income ${fmt(ly.income)}, profit ${fmt(ly.profit)}` : isMtd ? 'Month in progress' : 'No figures for the same month last year'}>
                       {ly ? (
-                        <>
-                          <div className={chgCls(incomeChg)}>Income {chgTxt(incomeChg)}</div>
-                          <div className={chgCls(profitChg)}>Profit {chgTxt(profitChg)}</div>
-                        </>
+                        <div className="flex flex-col items-start gap-1">
+                          {pill('Income', incomeChg)}
+                          {pill('Profit', profitChg)}
+                        </div>
                       ) : <span className="text-gray-300">—</span>}
                     </td>
                     {!readOnly && (
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-3">
+                      <div className="flex items-center justify-center gap-3 md:opacity-30 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleGenerateReport(r)}
                           disabled={generatingReportId === r.id}
