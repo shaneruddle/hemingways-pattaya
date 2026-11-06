@@ -32,23 +32,43 @@ export const COGS_CATEGORY_NAMES = new Set(['Food Expense', 'Drink Expense', 'Ic
 export const DIVIDEND_CATEGORY_ID = 'dividends';
 export const DIVIDEND_CATEGORY_NAME = 'Dividends';
 
-// Rent: 1,600,000 THB a year, paid at the end of March for the year ahead (April–March).
-// Synced months carry a monthly share in operating expense and build a Rent Reserve; the
-// March payment (logged in Finance as Rent Expense) comes out of the reserve, not profit.
+// Rent is paid in advance (around February) for the rent year April–March, to 2 landlords.
+// Every month is charged 1/12 of the payment that covers it (rentExpense, in profit). The
+// payments themselves are "Rent paid" (rentPaid, logged in Finance as Rent Expense) and
+// go into Prepaid rent (stored as rentReserve), which runs down by each month's share.
+// New Balance stays as the real money: balance + income − COGS − operating − dividends −
+// rent paid.
 export const RENT_CATEGORY_IDS = new Set(['rent_expense']);
 export const RENT_CATEGORY_NAMES = new Set(['Rent Expense', 'Rent']);
-export const ANNUAL_RENT = 1_600_000;
+// Total rent for the rent year starting April of the given year. Years after the last one
+// listed use the last amount until a new one is added here.
+const RENT_BY_YEAR: Record<number, number> = { 2023: 1_400_000, 2024: 1_400_000, 2025: 1_620_000, 2026: 1_620_000 };
 const RENT_YEAR_START_MONTH = 3; // April (0-indexed)
-// The rent reserve starts here. Months from here up to AUTO_SYNC_START keep their
-// hand-entered income / COGS / operating / dividends, but get the monthly rent share and
-// a re-chained balance, so the reserve builds from April 2026.
-const RENT_RESERVE_START = { year: 2026, month: 3 };
+// Hand-entered months where a rent payment was entered under another heading. The figures
+// here are what those months should hold once the payment is moved to Rent paid.
+const HISTORIC_RENT_PAYMENTS: Record<string, Partial<Pick<MonthlySummaryRow, 'operatingExpense' | 'dividends'>> & { rentPaid: number }> = {
+  'February 2024': { operatingExpense: 738_588, rentPaid: 1_200_000 }, // was 1,938,588
+  'March 2024': { operatingExpense: 888_369, rentPaid: 200_000 }, // was 1,088,369
+  'February 2025': { dividends: 0, rentPaid: 1_620_000 }, // was 1,620,000 in dividends
+  'February 2026': { operatingExpense: 654_804, rentPaid: 1_620_000 }, // 1,400,000 was in Rent, 220,000 in operating
+};
 export const isRentExpense = (e: { category_id?: string; category_name?: string }) =>
   (!!e.category_id && RENT_CATEGORY_IDS.has(e.category_id)) || (!!e.category_name && RENT_CATEGORY_NAMES.has(e.category_name));
-// Rent set aside by the end of month index k of the rent year (k = 0 is April). Rounded on
-// the cumulative figure so twelve months add up to exactly ANNUAL_RENT.
-const rentCumulative = (k: number) => Math.round((ANNUAL_RENT * k) / 12 * 100) / 100;
+const rentYearOf = (year: number, month: number) => (month >= RENT_YEAR_START_MONTH ? year : year - 1);
 const rentYearIndex = (month: number) => (month - RENT_YEAR_START_MONTH + 12) % 12;
+const annualRent = (rentYear: number) => {
+  const years = Object.keys(RENT_BY_YEAR).map(Number).sort((a, b) => a - b);
+  const known = years.filter(y => y <= rentYear).pop() ?? years[0];
+  return RENT_BY_YEAR[known];
+};
+// Rent used by the end of month index k of a rent year (k = 0 is April). Rounded on the
+// cumulative figure so twelve months add up to exactly the year's rent.
+const rentCumulative = (annual: number, k: number) => Math.round((annual * k) / 12 * 100) / 100;
+const monthlyRent = (year: number, month: number) => {
+  const annual = annualRent(rentYearOf(year, month));
+  const k = rentYearIndex(month);
+  return Math.round((rentCumulative(annual, k + 1) - rentCumulative(annual, k)) * 100) / 100;
+};
 
 // Auto-calculation only applies from July 2026 onward — earlier months were seeded
 // manually from historical records and should not be silently overwritten from live data.
@@ -213,65 +233,51 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
       err => console.error('Monthly Summary notes:', err));
   }, [readOnly]);
 
-  // Live figures for every synced month (August 2026 onward, including the current
-  // month), plus the rent share for hand-entered months from April 2026, chained from
-  // the closing balance before them. Pure — used both to persist (owner) and to display
-  // live (read-only partners, who can't write).
+  // Every month with its rent charged monthly: hand-entered months (before August 2026)
+  // keep their own income / COGS / operating / dividends, synced months come live from
+  // Finance. The balance chains on from the first month's opening balance. Pure — used
+  // both to persist (owner) and to display live (read-only partners, who can't write).
   const computedSync = useMemo(() => {
     if (!rows || !syncIncome || !syncExpenses) return null;
-    const months = completedSyncMonths();
-    if (months.length === 0) return null;
     const ymKey = (y: number, m: number) => y * 12 + m;
     const syncStartKey = ymKey(AUTO_SYNC_START.year, AUTO_SYNC_START.month);
-    const rentStartKey = ymKey(RENT_RESERVE_START.year, RENT_RESERVE_START.month);
-    // Hand-entered months between the rent reserve start and auto-sync (oldest first).
-    const rentOnlyRows = rows.filter(r => {
+    const handRows = rows.filter(r => {
       const p = parseMonthLabel(r.label);
-      if (!p) return false;
-      const key = ymKey(p.year, p.month);
-      return key >= rentStartKey && key < syncStartKey;
+      return !!p && ymKey(p.year, p.month) < syncStartKey;
     });
-    const firstLabel = rentOnlyRows.length ? rentOnlyRows[0].label : formatMonthLabel(months[0].year, months[0].month);
-    const byLabel = new Map(rows.map(r => [r.label, r]));
-    const prior = [...rows].filter(r => !byLabel.has(firstLabel) || r.order < byLabel.get(firstLabel)!.order).pop();
-    if (!prior && !rentOnlyRows.length) return null; // nothing to chain from yet
-    // Hand-entered months keep their own opening balance; synced months chain on from it.
-    let balance = rentOnlyRows.length ? rentOnlyRows[0].balance || 0 : prior!.newBalance;
-    let rentReserve = 0;
-    // Rent set aside so far in the current rent year. The first month also catches up any
-    // earlier months of that rent year, so the reserve is full by March.
-    let rentSoFar = 0;
-    const rentShare = (month: number, first: boolean) => {
-      const k = rentYearIndex(month);
-      if (k === 0 && !first) rentSoFar = 0; // new rent year starts in April
-      const share = round2(rentCumulative(k + 1) - rentSoFar);
-      rentSoFar = rentCumulative(k + 1);
-      return share;
-    };
+    const months = completedSyncMonths();
+    const firstMonth = handRows.length ? parseMonthLabel(handRows[0].label)! : months[0];
+    if (!firstMonth) return null;
+    // Opening balance: the first hand-entered month's own, else the last row before sync.
+    const prior = rows.filter(r => { const p = parseMonthLabel(r.label); return !p || ymKey(p.year, p.month) < syncStartKey; }).pop();
+    if (!handRows.length && !prior) return null; // nothing to chain from yet
+    let balance = handRows.length ? handRows[0].balance || 0 : prior!.newBalance;
+    // Prepaid rent at the start: the part of the first month's rent year not yet used.
+    const firstAnnual = annualRent(rentYearOf(firstMonth.year, firstMonth.month));
+    let prepaid = round2(firstAnnual - rentCumulative(firstAnnual, rentYearIndex(firstMonth.month)));
     const out: (Omit<MonthlySummaryRow, 'id' | 'order'>)[] = [];
-    rentOnlyRows.forEach((r, i) => {
-      const p = parseMonthLabel(r.label)!;
-      const rentExpense = rentShare(p.month, i === 0);
-      rentReserve = round2(rentReserve + rentExpense);
-      const profit = round2((r.income || 0) - (r.cogsExpense || 0) - (r.operatingExpense || 0) - rentExpense);
-      const newBalance = round2(balance + profit - (r.dividends || 0));
-      out.push({
-        label: r.label, balance: round2(balance), income: r.income || 0, cogsExpense: r.cogsExpense || 0,
-        operatingExpense: r.operatingExpense || 0, dividends: r.dividends || 0,
-        rentExpense, profit, newBalance, rentPaid: 0, rentReserve,
-      });
+    const push = (label: string, year: number, month: number, t: { income: number; cogsExpense: number; operatingExpense: number; dividends: number; rentPaid: number }) => {
+      const rentExpense = monthlyRent(year, month);
+      prepaid = round2(prepaid + t.rentPaid - rentExpense);
+      const profit = round2(t.income - t.cogsExpense - t.operatingExpense - rentExpense);
+      const newBalance = round2(balance + t.income - t.cogsExpense - t.operatingExpense - t.dividends - t.rentPaid);
+      out.push({ label, balance: round2(balance), ...t, rentExpense, profit, newBalance, rentReserve: prepaid });
       balance = newBalance;
+    };
+    handRows.forEach(r => {
+      const p = parseMonthLabel(r.label)!;
+      const fix = HISTORIC_RENT_PAYMENTS[r.label];
+      push(r.label, p.year, p.month, {
+        income: r.income || 0, cogsExpense: r.cogsExpense || 0,
+        operatingExpense: fix?.operatingExpense ?? (r.operatingExpense || 0),
+        dividends: fix?.dividends ?? (r.dividends || 0),
+        rentPaid: fix?.rentPaid ?? 0,
+      });
     });
     months.forEach(m => {
-      const label = formatMonthLabel(m.year, m.month);
       const next = nextMonth(m.year, m.month);
-      const { rentPaid, ...t } = totalsFromDocs(syncIncome, syncExpenses, monthStart(m.year, m.month), monthStart(next.year, next.month));
-      const rentExpense = rentShare(m.month, out.length === 0);
-      rentReserve = round2(rentReserve + rentExpense - rentPaid);
-      const profit = round2(t.income - t.cogsExpense - t.operatingExpense - rentExpense);
-      const newBalance = round2(balance + profit - t.dividends);
-      out.push({ label, balance: round2(balance), ...t, rentExpense, profit, newBalance, rentPaid, rentReserve });
-      balance = newBalance;
+      const t = totalsFromDocs(syncIncome, syncExpenses, monthStart(m.year, m.month), monthStart(next.year, next.month));
+      push(formatMonthLabel(m.year, m.month), m.year, m.month, t);
     });
     return out;
   }, [rows, syncIncome, syncExpenses]);
@@ -297,7 +303,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
             const changed = (['balance', 'income', 'cogsExpense', 'operatingExpense', 'dividends', 'profit', 'newBalance', 'rentExpense', 'rentPaid', 'rentReserve'] as const)
               .some(k => round2((existing as any)[k] || 0) !== (data as any)[k]);
             if (changed) {
-              await updateDoc(doc(db, 'finance_monthly_summary', existing.id!), { ...data, autoSynced: true, updatedAt: nowIso, updatedBy: by });
+              await updateDoc(doc(db, 'finance_monthly_summary', existing.id!), { ...data, updatedAt: nowIso, updatedBy: by });
             }
           }
         }
@@ -422,8 +428,9 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
     setEditingRow(null);
   };
 
-  const previewProfit = num(form.income) - num(form.cogsExpense) - num(form.operatingExpense) - num(form.rentExpense);
-  const previewNewBalance = num(form.balance) + previewProfit - num(form.dividends);
+  const previewRent = (() => { const p = parseMonthLabel(form.label); return p ? monthlyRent(p.year, p.month) : num(form.rentExpense); })();
+  const previewProfit = num(form.income) - num(form.cogsExpense) - num(form.operatingExpense) - previewRent;
+  const previewNewBalance = num(form.balance) + num(form.income) - num(form.cogsExpense) - num(form.operatingExpense) - num(form.dividends) - (editingRow?.rentPaid || 0);
 
   // Whether the currently-displayed label (which may have been edited) is eligible
   // for the "Recalculate" button — always derived from form.label, not the original
@@ -441,10 +448,12 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
     const income = num(form.income);
     const cogsExpense = num(form.cogsExpense);
     const operatingExpense = num(form.operatingExpense);
-    const rentExpense = num(form.rentExpense);
+    const parsedLabel = parseMonthLabel(form.label);
+    const rentExpense = parsedLabel ? monthlyRent(parsedLabel.year, parsedLabel.month) : num(form.rentExpense);
     const dividends = num(form.dividends);
     const profit = income - cogsExpense - operatingExpense - rentExpense;
-    const newBalance = balance + profit - dividends;
+    // Real money: rent is taken out when it's paid, not month by month.
+    const newBalance = balance + income - cogsExpense - operatingExpense - dividends - (editingRow?.rentPaid || 0);
     const nowIso = new Date().toISOString();
 
     try {
@@ -643,8 +652,8 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
           <h1 className="text-2xl font-bold text-ink">Monthly Summary</h1>
           <p className="text-xs text-gray-400 mt-1">
             {readOnly
-              ? 'Read-only · August 2026 onward updates live from Finance · rent spread monthly into a reserve · running balance, income, expenses, profit & dividends by month'
-              : 'Private · August 2026 onward updates automatically from Finance · rent spread monthly into a reserve · running balance, income, expenses, profit & dividends by month'}
+              ? 'Read-only · August 2026 onward updates live from Finance · rent charged monthly, payments held as prepaid rent · running balance, income, expenses, profit & dividends by month'
+              : 'Private · August 2026 onward updates automatically from Finance · rent charged monthly, payments held as prepaid rent · running balance, income, expenses, profit & dividends by month'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -722,14 +731,14 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                   <th className="px-4 py-3 text-right">Income</th>
                   <th className="px-4 py-3 text-right">COGS Expense</th>
                   <th className="px-4 py-3 text-right">Operating Expense</th>
-                  <th className="px-4 py-3 text-right" title="Rent charged to the month. From April 2026 it's 1/12 of the 1.6M annual rent; earlier months are entered by hand.">Rent</th>
+                  <th className="px-4 py-3 text-right" title="Rent charged to the month: 1/12 of the rent for that April–March year.">Rent</th>
                   <th className="px-4 py-3 text-right">Profit</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap" title={`Food, drink and ice as % of income. Target ${COGS_TARGET_PCT}% or less, amber up to ${COGS_WARN_PCT}%.`}>COGS %</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap" title="Income after COGS, as % of income">Gross %</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap" title="Profit as % of income">Net %</th>
                   <th className="px-4 py-3 text-right">Dividends</th>
                   <th className="px-4 py-3 text-right">New Balance</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Rent set aside towards the next March payment (1.6M a year). Operating expense includes each month's share.">Rent Reserve</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Rent already paid that covers future months. Goes up when rent is paid and down by each month's share.">Prepaid Rent</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap" title="Income and profit vs the same month last year">vs Last Year</th>
                   {!readOnly && <th className="px-4 py-3 text-center">Actions</th>}
                 </tr>
@@ -806,7 +815,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                     <td className="px-4 py-3 text-right font-bold text-ink">{fmt(r.newBalance)}</td>
                     <td
                       className="px-4 py-3 text-right text-gray-600 whitespace-nowrap"
-                      title={r.rentReserve === undefined ? 'Before rent reserve tracking' : `Set aside ${fmt(r.rentExpense || 0)}${r.rentPaid ? ` · paid ${fmt(r.rentPaid)}` : ''}`}
+                      title={r.rentReserve === undefined ? '' : `Used ${fmt(r.rentExpense || 0)}${r.rentPaid ? ` · paid ${fmt(r.rentPaid)}` : ''}`}
                     >
                       {r.rentReserve === undefined ? <span className="text-gray-300">—</span> : (
                         <>
@@ -956,11 +965,11 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rent (฿)</label>
                 <input
                   type="number"
-                  value={form.rentExpense}
-                  onChange={e => setForm(f => ({ ...f, rentExpense: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1DA0A8] text-gray-900"
+                  value={(() => { const p = parseMonthLabel(form.label); return p ? String(monthlyRent(p.year, p.month)) : form.rentExpense; })()}
+                  readOnly
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50 text-gray-500"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">From April 2026 this is set automatically (1/12 of the annual rent).</p>
+                <p className="text-[11px] text-gray-400 mt-1">Set automatically: 1/12 of the year's rent. Rent payments go in Finance as Rent Expense.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Dividends (฿)</label>

@@ -88,8 +88,8 @@ export async function fetchCategoryBreakdownRange(startDate: string, endDate: st
 const RENT_PAID_LABEL = 'Rent Expense';
 const RENT_SHARE_LABEL = 'Rent (monthly share)';
 
-// Months with a rent reserve carry a monthly rent share in operating expense, and the
-// March payment comes out of the reserve, so swap the paid amount for the share.
+// Each month carries its monthly rent share, and payments go to prepaid rent, so swap
+// the paid amount for the share.
 export function applyRentShare(b: CategoryBreakdown, rentShare?: number): CategoryBreakdown {
   if (rentShare === undefined) return b;
   const operatingByCategory = new Map(b.operatingByCategory);
@@ -212,8 +212,8 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
     ['Net Margin', pct(row.profit, income)],
     ...(row.rentReserve !== undefined
       ? [
-          ...(row.rentPaid ? [['Rent Paid from Reserve', fmt(row.rentPaid)] as [string, string]] : []),
-          ['Rent Reserve', fmt(row.rentReserve)] as [string, string],
+          ...(row.rentPaid ? [['Rent Paid (to prepaid)', fmt(row.rentPaid)] as [string, string]] : []),
+          ['Prepaid Rent', fmt(row.rentReserve)] as [string, string],
         ]
       : []),
   ];

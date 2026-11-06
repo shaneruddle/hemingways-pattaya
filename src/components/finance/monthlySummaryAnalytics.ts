@@ -86,7 +86,7 @@ export type Totals = {
   newBalance: number; // closing balance of the last month in the set
   rentExpense: number; // rent charged over the set
   rentPaid: number;
-  rentReserve: number | null; // reserve at the end of the set (null if never tracked)
+  rentReserve: number | null; // prepaid rent at the end of the set (null if never tracked)
   months: number;
 };
 
@@ -174,7 +174,7 @@ export function exportSummaryCsv(rows: MonthlySummaryRow[], filename: string) {
   downloadCsv(
     filename,
     ['Month', 'Balance', 'Income', 'COGS', 'Operating', 'Rent', 'Profit', 'Dividends', 'New Balance',
-      'Rent Paid', 'Rent Reserve', 'COGS %', 'Gross Margin %', 'Net Margin %'],
+      'Rent Paid', 'Prepaid Rent', 'COGS %', 'Gross Margin %', 'Net Margin %'],
     rows.map(r => {
       const m = margins(r);
       const opt = (v?: number) => (v === undefined ? '' : v);

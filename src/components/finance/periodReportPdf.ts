@@ -109,8 +109,8 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
     ly ? ['Closing Balance', fmt0(t.newBalance), fmt0(ly.newBalance), ''] : ['Closing Balance', fmt0(t.newBalance)],
     ...(hasRent
       ? [
-          ...(t.rentPaid ? [['Rent Paid from Reserve', fmt0(t.rentPaid), ...(ly ? ['', ''] : [])]] : []),
-          ['Rent Reserve (closing)', fmt0(t.rentReserve ?? 0), ...(ly ? ['', ''] : [])],
+          ...(t.rentPaid ? [['Rent Paid (to prepaid)', fmt0(t.rentPaid), ...(ly ? ['', ''] : [])]] : []),
+          ['Prepaid Rent (closing)', fmt0(t.rentReserve ?? 0), ...(ly ? ['', ''] : [])],
         ]
       : []),
   ];

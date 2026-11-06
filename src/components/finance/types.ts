@@ -124,15 +124,12 @@ export interface MonthlySummaryRow {
   cogsExpense: number;
   operatingExpense: number;
   dividends: number;
-  profit: number; // = income - cogsExpense - operatingExpense
-  newBalance: number; // = balance + profit - dividends
-  // Rent charged to this month, separate from operatingExpense (profit = income - COGS -
-  // operating - rent). Synced months (August 2026 onward) get 1/12 of the annual rent; for
-  // older months it's whatever was entered by hand.
+  profit: number; // = income - cogsExpense - operatingExpense - rentExpense
+  newBalance: number; // real money: balance + income - cogsExpense - operatingExpense - dividends - rentPaid
+  // Rent charged to this month: 1/12 of the rent for that April–March year.
   rentExpense?: number;
-  // Synced months only. The March rent payment (rentPaid) comes out of rentReserve, not profit.
   rentPaid?: number; // rent actually paid this month (Finance → Rent Expense)
-  rentReserve?: number; // running rent reserve after this month
+  rentReserve?: number; // prepaid rent after this month (paid but not yet used)
   notes?: string; // free-text admin note for this month, not shown in partner reports
   createdAt?: string;
   updatedAt?: string;
@@ -145,7 +142,7 @@ export interface Reconciliation {
   id?: string;
   monthLabel: string; // e.g. "August 2026"
   monthRowId: string;
-  systemBalance: number; // closing balance + rent reserve (what should be on hand)
+  systemBalance: number; // closing balance (older counts also added the rent reserve)
   rentReserve?: number; // rent reserve included in systemBalance (older counts: none)
   bank: number;
   bankNote: string;
