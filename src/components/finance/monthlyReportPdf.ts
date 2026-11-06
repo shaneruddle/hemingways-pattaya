@@ -10,6 +10,7 @@ import {
   DIVIDEND_CATEGORY_NAME,
   parseMonthLabel,
   nextMonth,
+  MONTH_NAMES,
 } from './MonthlySummary';
 
 const TEAL = '#1DA0A8';
@@ -29,7 +30,7 @@ const pct = (num: number, den: number) => (Math.abs(den) < 0.005 ? '—' : `${((
 // Anything below this is treated as float noise, not a real mismatch.
 const MISMATCH_EPSILON = 1;
 
-type CategoryBreakdown = {
+export type CategoryBreakdown = {
   hasData: boolean;
   incomeByCategory: Map<string, number>;
   cogsByCategory: Map<string, number>;
@@ -44,7 +45,12 @@ async function fetchCategoryBreakdown(year: number, month: number): Promise<Cate
   const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const { year: endYear, month: endMonth } = nextMonth(year, month);
   const endDate = `${endYear}-${String(endMonth + 1).padStart(2, '0')}-01`;
+  return fetchCategoryBreakdownRange(startDate, endDate);
+}
 
+// Same as above for any 'YYYY-MM-DD' range (end exclusive) — used by the
+// quarterly / annual report.
+export async function fetchCategoryBreakdownRange(startDate: string, endDate: string): Promise<CategoryBreakdown> {
   const [incomeSnap, expenseSnap] = await Promise.all([
     getDocs(query(collection(db, 'finance_income'), where('date', '>=', startDate), where('date', '<', endDate))),
     getDocs(query(collection(db, 'finance_expenses'), where('date', '>=', startDate), where('date', '<', endDate))),
@@ -78,11 +84,11 @@ async function fetchCategoryBreakdown(year: number, month: number): Promise<Cate
   };
 }
 
-function sortedEntries(map: Map<string, number>): [string, number][] {
+export function sortedEntries(map: Map<string, number>): [string, number][] {
   return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
 }
 
-function drawBarChart(
+export function drawBarChart(
   doc: jsPDF,
   x: number,
   y: number,
@@ -127,6 +133,9 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
   const breakdown: CategoryBreakdown = parsed
     ? await fetchCategoryBreakdown(parsed.year, parsed.month)
     : { hasData: false, incomeByCategory: new Map(), cogsByCategory: new Map(), operatingByCategory: new Map() };
+  // Previous calendar month, for the "top expense movers" page.
+  const prev = parsed ? (parsed.month === 0 ? { year: parsed.year - 1, month: 11 } : { year: parsed.year, month: parsed.month - 1 }) : null;
+  const prevBreakdown = prev && breakdown.hasData ? await fetchCategoryBreakdown(prev.year, prev.month) : null;
 
   const income = row.income;
   const expense = row.cogsExpense + row.operatingExpense;
@@ -181,6 +190,9 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
     ['Dividends Paid', fmt(row.dividends)],
     ['Starting Balance', fmt0(row.balance)],
     ['New Balance', fmt(row.newBalance)],
+    ['COGS % of Income', pct(row.cogsExpense, income)],
+    ['Gross Margin (after COGS)', pct(income - row.cogsExpense, income)],
+    ['Net Margin', pct(row.profit, income)],
   ];
 
   autoTable(doc, {
@@ -334,6 +346,55 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
       );
       doc.text('transactions may have been logged or edited after this month was saved.', marginX, bothTables + 4);
     }
+  }
+
+  // ---- Top expense movers vs previous month (new page) -----------------------
+  if (prev && prevBreakdown?.hasData) {
+    const prevLabel = `${MONTH_NAMES[prev.month]} ${prev.year}`;
+    const allExpense = (b: CategoryBreakdown) => {
+      const m = new Map<string, number>();
+      b.cogsByCategory.forEach((v, k) => m.set(k, (m.get(k) || 0) + v));
+      b.operatingByCategory.forEach((v, k) => m.set(k, (m.get(k) || 0) + v));
+      return m;
+    };
+    const nowMap = allExpense(breakdown);
+    const prevMap = allExpense(prevBreakdown);
+    const movers = [...new Set([...nowMap.keys(), ...prevMap.keys()])]
+      .map(cat => ({ cat, now: nowMap.get(cat) || 0, before: prevMap.get(cat) || 0 }))
+      .map(m => ({ ...m, delta: m.now - m.before }))
+      .filter(m => Math.abs(m.delta) > MISMATCH_EPSILON);
+    const ups = movers.filter(m => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 8);
+    const downs = movers.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 8);
+    const changeCell = (m: { now: number; before: number }) =>
+      Math.abs(m.before) < 0.005 ? 'new' : `${m.now > m.before ? '+' : ''}${(((m.now - m.before) / m.before) * 100).toFixed(1)}%`;
+
+    doc.addPage();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(INK);
+    doc.text(`Top Expense Movers — ${row.label} vs ${prevLabel}`, marginX, 18);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(MUTED);
+    doc.text('Expense categories (COGS and operating) with the biggest change from the previous month. Dividends excluded.', marginX, 24);
+
+    const halfW = (pageW - marginX * 2 - 6) / 2;
+    const moverTable = (title: string, list: typeof ups, left: number, color: string) => {
+      autoTable(doc, {
+        startY: 30,
+        margin: { left },
+        tableWidth: halfW,
+        head: [[title, prevLabel, row.label, 'Change', '%']],
+        body: list.length
+          ? list.map(m => [m.cat, fmt0(m.before), fmt0(m.now), `${m.delta > 0 ? '+' : ''}${fmt0(m.delta)}`, changeCell(m)])
+          : [['None', '', '', '', '']],
+        headStyles: { fillColor: '#F3F4F6', textColor: INK, fontStyle: 'bold', fontSize: 8.5 },
+        styles: { font: 'helvetica', fontSize: 8.5, textColor: INK },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right', textColor: color, fontStyle: 'bold' }, 4: { halign: 'right' } },
+      });
+    };
+    moverTable('Biggest increases', ups, marginX, RED);
+    moverTable('Biggest decreases', downs, marginX + halfW + 6, GREEN);
   }
 
   // ---- Monthly Summary sheet (new page) -----------------------------------
