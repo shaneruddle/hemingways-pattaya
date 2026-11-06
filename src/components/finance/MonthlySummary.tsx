@@ -484,6 +484,9 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
   const [periodYear, setPeriodYear] = useState<number>(pattayaNow().year);
   const [periodQuarter, setPeriodQuarter] = useState<number | null>(Math.floor(pattayaNow().month / 3) + 1);
   const [generatingPeriod, setGeneratingPeriod] = useState(false);
+  const [periodPreview, setPeriodPreview] = useState<{ url: string; filename: string; label: string } | null>(null);
+  // Free the preview's object URL when it's replaced or the page unmounts.
+  useEffect(() => () => { if (periodPreview) URL.revokeObjectURL(periodPreview.url); }, [periodPreview]);
   const mtdLabel = currentMonthLabel();
 
   // Oldest-first, using the same figures that are displayed (live for partners).
@@ -526,15 +529,30 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
     try {
       const { generatePeriodReportPdf, periodLabel } = await import('./periodReportPdf');
       const period = { year: periodYear, quarter: periodQuarter };
-      await generatePeriodReportPdf(period, allRowsOldest);
-      await logActivity('Period Report Generated', periodLabel(period), 'finance');
-      setShowPeriod(false);
+      const { blob, filename } = await generatePeriodReportPdf(period, allRowsOldest);
+      setPeriodPreview({ url: URL.createObjectURL(blob), filename, label: periodLabel(period) });
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error && err.message.startsWith('No months') ? err.message : 'Failed to generate report');
     } finally {
       setGeneratingPeriod(false);
     }
+  };
+
+  const closePeriod = () => {
+    setShowPeriod(false);
+    setPeriodPreview(null);
+  };
+
+  const handleDownloadPeriod = async () => {
+    if (!periodPreview) return;
+    const a = document.createElement('a');
+    a.href = periodPreview.url;
+    a.download = periodPreview.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    await logActivity('Period Report Downloaded', periodPreview.label, 'finance');
   };
 
   const toneCls = { good: 'text-green-600', warn: 'text-amber-600', bad: 'text-red-600', none: 'text-gray-400' } as const;
@@ -895,14 +913,31 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
       {reconRow && <ReconcileModal row={reconRow} onClose={() => setReconRow(null)} />}
 
       {showPeriod && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowPeriod(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={closePeriod}>
+          <div className={`bg-white rounded-2xl p-6 w-full shadow-xl ${periodPreview ? 'max-w-5xl' : 'max-w-sm'}`} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-ink">Period Report</h3>
-              <button onClick={() => setShowPeriod(false)} className="text-gray-400 hover:text-gray-600" aria-label="Close">
+              <h3 className="text-lg font-bold text-ink">Period Report{periodPreview ? ` — ${periodPreview.label}` : ''}</h3>
+              <button onClick={closePeriod} className="text-gray-400 hover:text-gray-600" aria-label="Close">
                 <X size={18} />
               </button>
             </div>
+            {periodPreview ? (
+              <>
+                <iframe src={periodPreview.url} title={`${periodPreview.label} report preview`} className="w-full h-[70vh] rounded-xl border border-gray-200 bg-gray-50" />
+                <div className="flex gap-3 mt-4">
+                  <button onClick={() => setPeriodPreview(null)} className="flex-1 py-2.5 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                    Back
+                  </button>
+                  <button
+                    onClick={handleDownloadPeriod}
+                    className="flex-1 py-2.5 bg-[#1DA0A8] text-white rounded-xl font-bold hover:bg-[#18919a] transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download size={16} /> Download PDF
+                  </button>
+                </div>
+              </>
+            ) : (
+            <>
             <p className="text-xs text-gray-500 mb-4">P&L for a quarter or full year, with month-by-month figures, margins, the same period last year and each partner's dividend share.</p>
             <div className="space-y-4">
               <div>
@@ -937,7 +972,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowPeriod(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+              <button onClick={closePeriod} className="flex-1 py-2.5 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
               <button
@@ -945,9 +980,11 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                 disabled={generatingPeriod}
                 className="flex-1 py-2.5 bg-[#1DA0A8] text-white rounded-xl font-bold hover:bg-[#18919a] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {generatingPeriod ? (<><Loader2 size={16} className="animate-spin" /> Generating...</>) : (<><Download size={16} /> Download PDF</>)}
+                {generatingPeriod ? (<><Loader2 size={16} className="animate-spin" /> Generating...</>) : (<><FileText size={16} /> Preview</>)}
               </button>
             </div>
+            </>
+            )}
           </div>
         </div>
       )}

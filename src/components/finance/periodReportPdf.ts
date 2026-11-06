@@ -36,7 +36,8 @@ function periodMonths(p: Period) {
   return p.quarter ? { from: (p.quarter - 1) * 3, to: (p.quarter - 1) * 3 + 2 } : { from: 0, to: 11 };
 }
 
-export async function generatePeriodReportPdf(period: Period, allRows: MonthlySummaryRow[]): Promise<void> {
+// Builds the PDF and returns it (not downloaded), so the page can preview it first.
+export async function generatePeriodReportPdf(period: Period, allRows: MonthlySummaryRow[]): Promise<{ blob: Blob; filename: string }> {
   const { from, to } = periodMonths(period);
   const expectedMonths = to - from + 1;
   const rows = rowsInRange(allRows, period.year, from, to);
@@ -230,5 +231,5 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
     doc.text(`Page ${i} of ${pageCount}`, pageW - marginX, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
   }
 
-  doc.save(`Hemingways_Pattaya_${label.replace(/\s+/g, '_')}_Report.pdf`);
+  return { blob: doc.output('blob'), filename: `Hemingways_Pattaya_${label.replace(/\s+/g, '_')}_Report.pdf` };
 }
