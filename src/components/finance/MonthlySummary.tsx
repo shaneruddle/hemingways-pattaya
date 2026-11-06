@@ -488,7 +488,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Monthly Summary</h1>
@@ -521,11 +521,11 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
             No months logged yet
           </p>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-auto max-h-[calc(100vh-10rem)]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase tracking-wide">
-                  <th className="px-4 py-3">Month</th>
+                <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase tracking-wide sticky top-0 z-20 bg-white">
+                  <th className="px-4 py-3 sticky left-0 z-30 bg-white">Month</th>
                   <th className="px-4 py-3 text-right">Balance</th>
                   <th className="px-4 py-3 text-right">Income</th>
                   <th className="px-4 py-3 text-right">COGS Expense</th>
@@ -539,7 +539,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
               <tbody>
                 {(displayRows || []).map(r => (
                   <tr key={r.id} className="border-b border-gray-50 last:border-0">
-                    <td className="px-4 py-3 font-medium text-ink whitespace-nowrap">{r.label}</td>
+                    <td className="px-4 py-3 font-medium text-ink whitespace-nowrap sticky left-0 z-10 bg-white">{r.label}</td>
                     <td className="px-4 py-3 text-right text-gray-600">{fmt(r.balance)}</td>
                     <td className="px-4 py-3 text-right text-green-600 font-medium">{fmt(r.income)}</td>
                     <td className="px-4 py-3 text-right text-red-500">{fmt(r.cogsExpense)}</td>
@@ -560,10 +560,10 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                         </button>
                         <button
                           onClick={() => openNote(r)}
-                          className={`transition-colors ${(privateNotes[r.id] ?? r.notes)?.trim() ? 'text-[#1DA0A8]' : 'text-gray-400 hover:text-[#1DA0A8]'}`}
+                          className={`transition-colors rounded-md p-1 -m-1 ${(privateNotes[r.id] ?? r.notes)?.trim() ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'text-gray-400 hover:text-[#1DA0A8]'}`}
                           title={(privateNotes[r.id] ?? r.notes)?.trim() ? 'View/edit note' : 'Add note'}
                         >
-                          <StickyNote size={14} />
+                          <StickyNote size={14} strokeWidth={(privateNotes[r.id] ?? r.notes)?.trim() ? 2.5 : 2} />
                         </button>
                         <button onClick={() => setReconRow(r)} className="text-gray-400 hover:text-[#1DA0A8] transition-colors" title="Reconcile">
                           <Scale size={14} />
