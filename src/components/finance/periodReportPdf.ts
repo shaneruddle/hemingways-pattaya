@@ -46,7 +46,9 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
   const monthsCovered = new Set(rows.map(r => r.label.split(' ')[0]));
   const lastYearRows = rowsInRange(allRows, period.year - 1, from, to).filter(r => monthsCovered.has(r.label.split(' ')[0]));
   const t = totalsOf(rows);
-  const ly: Totals | null = lastYearRows.length ? totalsOf(lastYearRows) : null;
+  // Only compare when last year has every month this period has; a partial match
+  // (e.g. 3 months vs 1) would give misleading changes, so the column is left out.
+  const ly: Totals | null = lastYearRows.length === rows.length ? totalsOf(lastYearRows) : null;
   const label = periodLabel(period);
   const lyLabel = lastYearRows.length < expectedMonths ? `Same months ${period.year - 1}` : periodLabel({ ...period, year: period.year - 1 });
   const includesMtd = rows.some(r => r.label === currentMonthLabel());
