@@ -32,6 +32,20 @@ export const COGS_CATEGORY_NAMES = new Set(['Food Expense', 'Drink Expense', 'Ic
 export const DIVIDEND_CATEGORY_ID = 'dividends';
 export const DIVIDEND_CATEGORY_NAME = 'Dividends';
 
+// Rent: 1,600,000 THB a year, paid at the end of March for the year ahead (April–March).
+// Synced months carry a monthly share in operating expense and build a Rent Reserve; the
+// March payment (logged in Finance as Rent Expense) comes out of the reserve, not profit.
+export const RENT_CATEGORY_IDS = new Set(['rent_expense']);
+export const RENT_CATEGORY_NAMES = new Set(['Rent Expense', 'Rent']);
+export const ANNUAL_RENT = 1_600_000;
+const RENT_YEAR_START_MONTH = 3; // April (0-indexed)
+export const isRentExpense = (e: { category_id?: string; category_name?: string }) =>
+  (!!e.category_id && RENT_CATEGORY_IDS.has(e.category_id)) || (!!e.category_name && RENT_CATEGORY_NAMES.has(e.category_name));
+// Rent set aside by the end of month index k of the rent year (k = 0 is April). Rounded on
+// the cumulative figure so twelve months add up to exactly ANNUAL_RENT.
+const rentCumulative = (k: number) => Math.round((ANNUAL_RENT * k) / 12 * 100) / 100;
+const rentYearIndex = (month: number) => (month - RENT_YEAR_START_MONTH + 12) % 12;
+
 // Auto-calculation only applies from July 2026 onward — earlier months were seeded
 // manually from historical records and should not be silently overwritten from live data.
 const AUTO_CALC_START = { year: 2026, month: 6 }; // month is 0-indexed (6 = July)
@@ -106,15 +120,17 @@ function totalsFromDocs(incomeDocs: any[], expenseDocs: any[], startDate: string
   let cogsExpense = 0;
   let operatingExpense = 0;
   let dividends = 0;
+  let rentPaid = 0;
   expenseDocs.filter(inRange).forEach(e => {
     const total = e.total || 0;
     const isDividend = e.category_id === DIVIDEND_CATEGORY_ID || e.category_name === DIVIDEND_CATEGORY_NAME;
     const isCogs = (e.category_id && COGS_CATEGORY_IDS.has(e.category_id)) || COGS_CATEGORY_NAMES.has(e.category_name);
     if (isDividend) dividends += total;
+    else if (isRentExpense(e)) rentPaid += total; // paid from the rent reserve
     else if (isCogs) cogsExpense += total;
     else operatingExpense += total;
   });
-  return { income: round2(income), cogsExpense: round2(cogsExpense), operatingExpense: round2(operatingExpense), dividends: round2(dividends) };
+  return { income: round2(income), cogsExpense: round2(cogsExpense), operatingExpense: round2(operatingExpense), dividends: round2(dividends), rentPaid: round2(rentPaid) };
 }
 
 // Months from AUTO_SYNC_START up to AND including the current (in-progress) month, GMT+7.
@@ -205,13 +221,20 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
     const prior = [...rows].filter(r => !byLabel.has(firstLabel) || r.order < byLabel.get(firstLabel)!.order).pop();
     if (!prior) return null; // nothing to chain from yet
     let balance = prior.newBalance;
-    return months.map(m => {
+    let rentReserve = 0;
+    return months.map((m, i) => {
       const label = formatMonthLabel(m.year, m.month);
       const next = nextMonth(m.year, m.month);
-      const t = totalsFromDocs(syncIncome, syncExpenses, monthStart(m.year, m.month), monthStart(next.year, next.month));
-      const profit = round2(t.income - t.cogsExpense - t.operatingExpense);
+      const { rentPaid, ...t } = totalsFromDocs(syncIncome, syncExpenses, monthStart(m.year, m.month), monthStart(next.year, next.month));
+      // This month's share of next March's rent. The first synced month also catches up
+      // the earlier months of the current rent year, so the reserve is full by March.
+      const k = rentYearIndex(m.month);
+      const rentAccrual = round2(rentCumulative(k + 1) - rentCumulative(i === 0 ? 0 : k));
+      rentReserve = round2(rentReserve + rentAccrual - rentPaid);
+      const operatingExpense = round2(t.operatingExpense + rentAccrual);
+      const profit = round2(t.income - t.cogsExpense - operatingExpense);
       const newBalance = round2(balance + profit - t.dividends);
-      const data = { label, balance: round2(balance), ...t, profit, newBalance };
+      const data = { label, balance: round2(balance), ...t, operatingExpense, profit, newBalance, rentAccrual, rentPaid, rentReserve };
       balance = newBalance;
       return data;
     });
@@ -235,7 +258,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
             order += 1;
             await addDoc(collection(db, 'finance_monthly_summary'), { ...data, order, autoSynced: true, createdAt: nowIso, updatedAt: nowIso, updatedBy: by });
           } else {
-            const changed = (['balance', 'income', 'cogsExpense', 'operatingExpense', 'dividends', 'profit', 'newBalance'] as const)
+            const changed = (['balance', 'income', 'cogsExpense', 'operatingExpense', 'dividends', 'profit', 'newBalance', 'rentAccrual', 'rentPaid', 'rentReserve'] as const)
               .some(k => round2((existing as any)[k] || 0) !== (data as any)[k]);
             if (changed) {
               await updateDoc(doc(db, 'finance_monthly_summary', existing.id!), { ...data, autoSynced: true, updatedAt: nowIso, updatedBy: by });
@@ -556,7 +579,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
   };
 
   const toneCls = { good: 'text-green-600', warn: 'text-amber-600', bad: 'text-red-600', none: 'text-gray-400' } as const;
-  const colCount = readOnly ? 12 : 13;
+  const colCount = readOnly ? 13 : 14;
 
   const handleDelete = async (r: MonthlySummaryRow) => {
     if (!window.confirm(`Delete "${r.label}"? This cannot be undone.`)) return;
@@ -580,8 +603,8 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
           <h1 className="text-2xl font-bold text-ink">Monthly Summary</h1>
           <p className="text-xs text-gray-400 mt-1">
             {readOnly
-              ? 'Read-only · August 2026 onward updates live from Finance · running balance, income, expenses, profit & dividends by month'
-              : 'Private · August 2026 onward updates automatically from Finance · running balance, income, expenses, profit & dividends by month'}
+              ? 'Read-only · August 2026 onward updates live from Finance · rent spread monthly into a reserve · running balance, income, expenses, profit & dividends by month'
+              : 'Private · August 2026 onward updates automatically from Finance · rent spread monthly into a reserve · running balance, income, expenses, profit & dividends by month'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -665,6 +688,7 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                   <th className="px-4 py-3 text-right whitespace-nowrap" title="Profit as % of income">Net %</th>
                   <th className="px-4 py-3 text-right">Dividends</th>
                   <th className="px-4 py-3 text-right">New Balance</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" title="Rent set aside towards the next March payment (1.6M a year). Operating expense includes each month's share.">Rent Reserve</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap" title="Income and profit vs the same month last year">vs Last Year</th>
                   {!readOnly && <th className="px-4 py-3 text-center">Actions</th>}
                 </tr>
@@ -691,7 +715,8 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                         <td className={`px-4 py-2.5 text-right ${(m.netMarginPct ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtPct(m.netMarginPct)}</td>
                         <td className="px-4 py-2.5 text-right text-gray-600">{fmt(t.dividends)}</td>
                         <td className="px-4 py-2.5 text-right">{fmt(t.newBalance)}</td>
-                        <td className="px-4 py-2.5" colSpan={colCount - 11} />
+                        <td className="px-4 py-2.5 text-right text-gray-600 font-medium">{t.rentReserve === null ? '' : fmt(t.rentReserve)}</td>
+                        <td className="px-4 py-2.5" colSpan={colCount - 12} />
                       </tr>
                     );
                   }
@@ -736,6 +761,17 @@ export default function MonthlySummary({ readOnly = false }: { readOnly?: boolea
                     <td className={`px-4 py-3 text-right ${m.netMarginPct === null ? 'text-gray-400' : m.netMarginPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtPct(m.netMarginPct)}</td>
                     <td className="px-4 py-3 text-right text-gray-600">{fmt(r.dividends)}</td>
                     <td className="px-4 py-3 text-right font-bold text-ink">{fmt(r.newBalance)}</td>
+                    <td
+                      className="px-4 py-3 text-right text-gray-600 whitespace-nowrap"
+                      title={r.rentReserve === undefined ? 'Before rent reserve tracking' : `Set aside ${fmt(r.rentAccrual || 0)}${r.rentPaid ? ` · paid ${fmt(r.rentPaid)}` : ''}`}
+                    >
+                      {r.rentReserve === undefined ? <span className="text-gray-300">—</span> : (
+                        <>
+                          {fmt(r.rentReserve)}
+                          {!!r.rentPaid && <div className="text-[11px] text-amber-600">paid {fmt(r.rentPaid)}</div>}
+                        </>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap text-xs" title={ly ? `${ly.label}: income ${fmt(ly.income)}, profit ${fmt(ly.profit)}` : 'No figures for the same month last year'}>
                       {ly ? (
                         <>

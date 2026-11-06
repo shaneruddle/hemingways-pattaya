@@ -4,7 +4,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { MonthlySummaryRow } from './types';
-import { fetchCategoryBreakdownRange, sortedEntries, drawBarChart } from './monthlyReportPdf';
+import { fetchCategoryBreakdownRange, sortedEntries, drawBarChart, applyRentShare } from './monthlyReportPdf';
 import { rowsInRange, totalsOf, Totals, splitDividend, changePct, pctOf, currentMonthLabel } from './monthlySummaryAnalytics';
 
 const TEAL = '#1DA0A8';
@@ -56,7 +56,8 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
 
   const startDate = `${period.year}-${String(from + 1).padStart(2, '0')}-01`;
   const endDate = to === 11 ? `${period.year + 1}-01-01` : `${period.year}-${String(to + 2).padStart(2, '0')}-01`;
-  const breakdown = await fetchCategoryBreakdownRange(startDate, endDate);
+  const hasRent = rows.some(r => r.rentReserve !== undefined);
+  const breakdown = applyRentShare(await fetchCategoryBreakdownRange(startDate, endDate), hasRent ? t.rentAccrual : undefined);
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -102,6 +103,13 @@ export async function generatePeriodReportPdf(period: Period, allRows: MonthlySu
     ly ? ['Net Margin', pct(t.profit, t.income), pct(ly.profit, ly.income), ''] : ['Net Margin', pct(t.profit, t.income)],
     ly ? ['Opening Balance', fmt0(t.balance), fmt0(ly.balance), ''] : ['Opening Balance', fmt0(t.balance)],
     ly ? ['Closing Balance', fmt0(t.newBalance), fmt0(ly.newBalance), ''] : ['Closing Balance', fmt0(t.newBalance)],
+    ...(hasRent
+      ? [
+          ['Rent Set Aside (in Operating)', fmt0(t.rentAccrual), ...(ly ? ['', ''] : [])],
+          ...(t.rentPaid ? [['Rent Paid from Reserve', fmt0(t.rentPaid), ...(ly ? ['', ''] : [])]] : []),
+          ['Rent Reserve (closing)', fmt0(t.rentReserve ?? 0), ...(ly ? ['', ''] : [])],
+        ]
+      : []),
   ];
   autoTable(doc, {
     startY: 53,

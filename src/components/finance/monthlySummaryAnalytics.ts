@@ -68,7 +68,9 @@ export function projectMonth(r: MonthlySummaryRow) {
   const factor = daysInMonth / Math.max(day, 1);
   const income = round2(r.income * factor);
   const cogsExpense = round2(r.cogsExpense * factor);
-  const operatingExpense = round2(r.operatingExpense * factor);
+  // The monthly rent share is already a full month's amount, so only the rest scales.
+  const rent = r.rentAccrual || 0;
+  const operatingExpense = round2((r.operatingExpense - rent) * factor + rent);
   return { daysElapsed: day, daysInMonth, income, cogsExpense, operatingExpense, profit: round2(income - cogsExpense - operatingExpense) };
 }
 
@@ -82,6 +84,9 @@ export type Totals = {
   dividends: number;
   balance: number; // opening balance of the first month in the set
   newBalance: number; // closing balance of the last month in the set
+  rentAccrual: number; // rent set aside over the set
+  rentPaid: number;
+  rentReserve: number | null; // reserve at the end of the set (null if never tracked)
   months: number;
 };
 
@@ -97,6 +102,9 @@ export function totalsOf(rows: MonthlySummaryRow[]): Totals {
     dividends: sum('dividends'),
     balance: rows.length ? rows[0].balance : 0,
     newBalance: rows.length ? rows[rows.length - 1].newBalance : 0,
+    rentAccrual: round2(rows.reduce((s, r) => s + (r.rentAccrual || 0), 0)),
+    rentPaid: round2(rows.reduce((s, r) => s + (r.rentPaid || 0), 0)),
+    rentReserve: [...rows].reverse().find(r => r.rentReserve !== undefined)?.rentReserve ?? null,
     months: rows.length,
   };
 }
@@ -165,10 +173,13 @@ const pctCell = (p: number | null) => (p === null ? '' : round2(p));
 export function exportSummaryCsv(rows: MonthlySummaryRow[], filename: string) {
   downloadCsv(
     filename,
-    ['Month', 'Balance', 'Income', 'COGS', 'Operating', 'Profit', 'Dividends', 'New Balance', 'COGS %', 'Gross Margin %', 'Net Margin %'],
+    ['Month', 'Balance', 'Income', 'COGS', 'Operating (incl. rent share)', 'Profit', 'Dividends', 'New Balance',
+      'Rent Set Aside', 'Rent Paid', 'Rent Reserve', 'COGS %', 'Gross Margin %', 'Net Margin %'],
     rows.map(r => {
       const m = margins(r);
+      const opt = (v?: number) => (v === undefined ? '' : v);
       return [r.label, r.balance, r.income, r.cogsExpense, r.operatingExpense, r.profit, r.dividends, r.newBalance,
+        opt(r.rentAccrual), opt(r.rentPaid), opt(r.rentReserve),
         pctCell(m.cogsPct), pctCell(m.grossMarginPct), pctCell(m.netMarginPct)];
     })
   );

@@ -11,6 +11,7 @@ import {
   parseMonthLabel,
   nextMonth,
   MONTH_NAMES,
+  isRentExpense,
 } from './MonthlySummary';
 
 const TEAL = '#1DA0A8';
@@ -70,7 +71,7 @@ export async function fetchCategoryBreakdownRange(startDate: string, endDate: st
     const total = e.total || 0;
     const isDividend = e.category_id === DIVIDEND_CATEGORY_ID || e.category_name === DIVIDEND_CATEGORY_NAME;
     const isCogs = (!!e.category_id && COGS_CATEGORY_IDS.has(e.category_id)) || (!!e.category_name && COGS_CATEGORY_NAMES.has(e.category_name));
-    const cat = e.category_name || e.category_id || 'Uncategorized';
+    const cat = isRentExpense(e) ? RENT_PAID_LABEL : e.category_name || e.category_id || 'Uncategorized';
     if (isDividend) return; // dividends are shown from the row total, not itemized here
     if (isCogs) cogsByCategory.set(cat, (cogsByCategory.get(cat) || 0) + total);
     else operatingByCategory.set(cat, (operatingByCategory.get(cat) || 0) + total);
@@ -82,6 +83,19 @@ export async function fetchCategoryBreakdownRange(startDate: string, endDate: st
     cogsByCategory,
     operatingByCategory,
   };
+}
+
+const RENT_PAID_LABEL = 'Rent Expense';
+const RENT_SHARE_LABEL = 'Rent (monthly share)';
+
+// Months with a rent reserve carry a monthly rent share in operating expense, and the
+// March payment comes out of the reserve, so swap the paid amount for the share.
+export function applyRentShare(b: CategoryBreakdown, rentAccrual?: number): CategoryBreakdown {
+  if (rentAccrual === undefined) return b;
+  const operatingByCategory = new Map(b.operatingByCategory);
+  operatingByCategory.delete(RENT_PAID_LABEL);
+  if (rentAccrual > 0) operatingByCategory.set(RENT_SHARE_LABEL, (operatingByCategory.get(RENT_SHARE_LABEL) || 0) + rentAccrual);
+  return { ...b, operatingByCategory };
 }
 
 export function sortedEntries(map: Map<string, number>): [string, number][] {
@@ -130,12 +144,13 @@ export function drawBarChart(
 
 export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: MonthlySummaryRow[]): Promise<void> {
   const parsed = parseMonthLabel(row.label);
-  const breakdown: CategoryBreakdown = parsed
+  const breakdown: CategoryBreakdown = applyRentShare(parsed
     ? await fetchCategoryBreakdown(parsed.year, parsed.month)
-    : { hasData: false, incomeByCategory: new Map(), cogsByCategory: new Map(), operatingByCategory: new Map() };
+    : { hasData: false, incomeByCategory: new Map(), cogsByCategory: new Map(), operatingByCategory: new Map() }, row.rentAccrual);
   // Previous calendar month, for the "top expense movers" page.
   const prev = parsed ? (parsed.month === 0 ? { year: parsed.year - 1, month: 11 } : { year: parsed.year, month: parsed.month - 1 }) : null;
-  const prevBreakdown = prev && breakdown.hasData ? await fetchCategoryBreakdown(prev.year, prev.month) : null;
+  const prevRow = prev ? allRows.find(r => r.label === `${MONTH_NAMES[prev.month]} ${prev.year}`) : undefined;
+  const prevBreakdown = prev && breakdown.hasData ? applyRentShare(await fetchCategoryBreakdown(prev.year, prev.month), prevRow?.rentAccrual) : null;
 
   const income = row.income;
   const expense = row.cogsExpense + row.operatingExpense;
@@ -193,6 +208,13 @@ export async function generateMonthlyReportPdf(row: MonthlySummaryRow, allRows: 
     ['COGS % of Income', pct(row.cogsExpense, income)],
     ['Gross Margin (after COGS)', pct(income - row.cogsExpense, income)],
     ['Net Margin', pct(row.profit, income)],
+    ...(row.rentReserve !== undefined
+      ? [
+          ['Rent Set Aside (in Operating)', fmt(row.rentAccrual || 0)] as [string, string],
+          ...(row.rentPaid ? [['Rent Paid from Reserve', fmt(row.rentPaid)] as [string, string]] : []),
+          ['Rent Reserve', fmt(row.rentReserve)] as [string, string],
+        ]
+      : []),
   ];
 
   autoTable(doc, {
