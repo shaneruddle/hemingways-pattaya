@@ -598,6 +598,9 @@ export default function DashboardLayout({ user }: { user: any }) {
       {/* ── Main content ── */}
       <main style={{
         flex: 1,
+        // Without this a wide page (e.g. Monthly Summary's table) stretches main past
+        // the viewport instead of scrolling inside its own container.
+        minWidth: 0,
         marginLeft: sidebarWidth,
         minHeight: '100vh',
         background: '#f8f9fb',
